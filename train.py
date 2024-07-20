@@ -37,6 +37,10 @@ class Trainer:
         self.val_losses = []
         self.val_accuracies = []
 
+        # Move the model to the appropriate device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
+
     def plot_progress(self):
         # Clear the current figure and display the plot
         display.clear_output(wait=True)
@@ -112,6 +116,7 @@ class Trainer:
             progress_bar = tqdm(self.training_dataloader, desc=f'Epoch {epoch + 1}/{self.max_epochs}', unit="batch")
             for batch in self.training_dataloader:
                 inputs, labels = batch
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
                 # clears old gradients from the last step,
                 # necessary because gradients accumulate by default for every backpropagation pass
                 self.optimizer.zero_grad()
