@@ -1,4 +1,4 @@
-# Estimation of continuous valence and arousal levels from faces in naturalistic conditions, Nature Machine Intelligence 2021
+# Facial-Expression-Recognition-Emonet
 
 Official implementation of the paper _"Estimation of continuous valence and arousal levels from faces in naturalistic conditions"_, Antoine Toisoul, Jean Kossaifi, Adrian Bulat, Georgios Tzimiropoulos and Maja Pantic, published in Nature Machine Intelligence, January 2021 [[1]](#Citation).
 Work done in collaboration between Samsung AI Center Cambridge and Imperial College London.
@@ -12,63 +12,19 @@ The full article is available on the [Nature Machine Intelligence website](https
 <img src='images/emotion_only.gif' title='Emotion' style='max-width:600px'></img>  |  <img src='images/emotion_with_landmarks.gif' title='Emotion with landmarks' style='max-width:600px'></img>
 
 
-## Youtube Video
+## Our Project
+Introduces a novel deep neural network for analyzing facial affect in naturalistic conditions. 
+Integrates face alignment and jointly estimates categorical and continuous emotions in a single pass.
 
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=J8Skph65ghM">Automatic emotion analysis from faces in-the-wild
-  <br>
-  <img src="https://img.youtube.com/vi/J8Skph65ghM/0.jpg"></a>
-</p>
+In our project we used the emonet while using a transfer learning technique to train the model on our dataset. The dataset was different from the data that the original model was trained on. The dataset was a collection of images of people with different facial expressions - FER2013 [Link](https://paperswithcode.com/dataset/fer2013).
 
+The dataset was labeled for 7 emotions which is different from the pretrained models, so we had to modify the model to output 7 classes instead of 8 or 5, and focus on the categorical emotions only.
 
-## Testing the pretrained models
+Therefore, we created a train.py file that trains the model on the smaller dataset which had to be augmented.. 
 
-The code requires the following Python packages : 
+### WIP (need to add more details about the project)
 
-```
-  Pytorch (tested on version 1.2.0)
-  OpenCV (tested on version 4.1.0
-  skimage (tested on version 0.15.0)
-```
-
-We provide two pretrained models : one on 5 emotional classes and one on 8 classes. In addition to categorical emotions, both models also predict valence and arousal values as well as facial landmarks.
-
-To evaluate the pretrained models on the cleaned AffectNet test set, you need to first download the [AffectNet dataset](http://mohammadmahoor.com/affectnet/). Then simply run : 
-
-```
-  python test.py --nclass 8
-```
-
-where nclass defines which model you would like to test (5 or 8).
-
-Please note that the provided pickle files contain the list of images (filenames) that we used for testing/validation but not the image files.
-
-The program will output the following results :
-
-#### Results on AffectNet cleaned test set for 5 classes
-
-
-```
- Expression
-  ACC=0.82
-
- Valence
-  CCC=0.90, PCC=0.90, RMSE=0.24, SAGR=0.85
- Arousal
-  CCC=0.80, PCC=0.80, RMSE=0.24, SAGR=0.79
-```
-
-#### Results on AffectNet cleaned test set for 8 classes
-
-```
-  Expression
-    ACC=0.75
-
-  Valence
-    CCC=0.82, PCC=0.82, RMSE=0.29, SAGR=0.84
-  Arousal
-    CCC=0.75, PCC=0.75, RMSE=0.27, SAGR=0.80
-```
+and saves the model to be used later for testing.
 
 #### Class number to expression name
 
