@@ -130,18 +130,22 @@ class Trainer:
                 loss.backward()
                 # updates the model parameters based on the gradients calculated during backpropagation
                 self.optimizer.step()
-                total_loss += loss.item()
+                current_loss = loss.item()
+                total_loss += current_loss
 
                 _, predicted = torch.max(outputs.data, 1)
                 correct_predictions += (predicted == labels).sum().item()
                 total_predictions += labels.size(0)
-                # Update the progress bar
-                progress_bar.set_postfix({'loss': f'{total_loss / (progress_bar.n + 1):.4f}'})
+                # Update progress bar with loss value
+                progress_bar.set_postfix({'loss': f'{current_loss:.4f}'})
+                progress_bar.update(1)  # Manually increment the progress bar by one step
 
             train_accuracy = correct_predictions / total_predictions
 
             validation_loss, validation_accuracy = self.validate()
             train_loss = total_loss / len(self.training_dataloader)
+
+            progress_bar.close()
 
             print(f'Epoch {epoch + 1}, Train Loss: {train_loss}, Validation Loss: {validation_loss}, '
                   f'Train Accuracy: {train_accuracy}, Validation Accuracy: {validation_accuracy}')
