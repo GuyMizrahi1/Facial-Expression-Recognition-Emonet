@@ -96,6 +96,7 @@ class Trainer:
         with torch.no_grad():
             for batch in self.validation_dataloader:
                 inputs, labels = batch
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, labels)
                 total_loss += loss.item()
