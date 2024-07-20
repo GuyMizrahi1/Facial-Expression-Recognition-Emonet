@@ -1,5 +1,4 @@
 import os
-import shutil
 import subprocess
 import tarfile
 
@@ -45,7 +44,7 @@ print("Preparing dataset..")
 with tarfile.open("fer2013.tar.gz", "r") as tar:
     tar.extractall("fer2013")
 
-output_folder_path = "fer2013"
+output_folder_path = "FER2013"
 
 # Load the CSV file into a Pandas DataFrame
 df = pd.read_csv("fer2013/fer2013/fer2013.csv")
@@ -98,9 +97,7 @@ for index, row in df.iterrows():
     output_file_path = os.path.join(output_subfolder_path, f"{index}.jpg")
     img.save(output_file_path)
 
-
 print("Deleting temporary files..")
 os.remove("fer2013.tar.gz")
-shutil.rmtree("fer2013")
 
 print("\n It's all set now (:")

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 import numpy as np
-from emonet.models import EmoNet
+from emonet.emonet.models import EmoNet
 
 
 # New Model for Assignment

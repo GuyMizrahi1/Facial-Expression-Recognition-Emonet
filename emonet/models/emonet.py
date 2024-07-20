@@ -12,6 +12,7 @@ import numpy as np
 
 nn.InstanceNorm2d = nn.BatchNorm2d
 
+
 def conv3x3(in_planes, out_planes, strd=1, padding=1, bias=False):
     "3x3 convolution with padding"
     return nn.Conv2d(in_planes, out_planes, kernel_size=3,
@@ -62,6 +63,7 @@ class ConvBlock(nn.Module):
 
         return out3
 
+
 class HourGlass(nn.Module):
     def __init__(self, num_modules, depth, num_features):
         super(HourGlass, self).__init__()
@@ -99,7 +101,7 @@ class HourGlass(nn.Module):
         low3 = low2
         low3 = self._modules['b3_' + str(level)](low3)
 
-        up2 = F.interpolate(low3, scale_factor=2, mode='nearest') 
+        up2 = F.interpolate(low3, scale_factor=2, mode='nearest')
 
         return up1 + up2
 
@@ -120,7 +122,8 @@ class EmoNet(nn.Module):
         if self.temporal_smoothing:
             self.n_temporal_states = 5
             self.init_smoothing = True
-            self.temporal_weights = torch.Tensor([0.1,0.1,0.15,0.25,0.4]).unsqueeze(0).unsqueeze(2).cuda() #Size (1,5,1)
+            self.temporal_weights = torch.Tensor([0.1, 0.1, 0.15, 0.25, 0.4]).unsqueeze(0).unsqueeze(
+                2).cuda()  # Size (1,5,1)
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3)
         self.bn1 = nn.InstanceNorm2d(64)
         self.conv2 = ConvBlock(64, 128)
@@ -141,35 +144,35 @@ class EmoNet(nn.Module):
                     'bl' + str(hg_module), nn.Conv2d(256, 256, kernel_size=1, stride=1, padding=0))
                 self.add_module('al' + str(hg_module), nn.Conv2d(68,
                                                                  256, kernel_size=1, stride=1, padding=0))
-        #Do not optimize the FAN
+        # Do not optimize the FAN
         for p in self.parameters():
             p.requires_grad = False
 
-
         if self.attention:
-            n_in_features = 256*(num_modules+1) #Heatmap is applied hence no need to have it
+            n_in_features = 256 * (num_modules + 1)  # Heatmap is applied hence no need to have it
         else:
-            n_in_features = 256*(num_modules+1)+68 #68 for the heatmap
-        
-        n_features = [(256, 256)]*(n_blocks)
+            n_in_features = 256 * (num_modules + 1) + 68  # 68 for the heatmap
+
+        n_features = [(256, 256)] * (n_blocks)
 
         self.emo_convs = []
-        self.conv1x1_input_emo_2 =nn.Conv2d(n_in_features, 256, kernel_size=1, stride=1, padding=0)
+        self.conv1x1_input_emo_2 = nn.Conv2d(n_in_features, 256, kernel_size=1, stride=1, padding=0)
         for in_f, out_f in n_features:
             self.emo_convs.append(ConvBlock(in_f, out_f))
-            self.emo_convs.append(nn.MaxPool2d(2,2))
+            self.emo_convs.append(nn.MaxPool2d(2, 2))
         self.emo_net_2 = nn.Sequential(*self.emo_convs)
         self.avg_pool_2 = nn.AvgPool2d(4)
-        self.emo_fc_2 = nn.Sequential(nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(inplace=True), nn.Linear(128, self.n_expression + n_reg))
+        self.emo_fc_2 = nn.Sequential(nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(inplace=True),
+                                      nn.Linear(128, self.n_expression + n_reg))
 
     def forward(self, x, reset_smoothing=False):
-        
-        #Resets the temporal smoothing
+
+        # Resets the temporal smoothing
         if self.init_smoothing:
             self.init_smoothing = False
-            self.temporal_state = torch.zeros(x.size(0), self.n_temporal_states, self.n_expression+self.n_reg).cuda()              
+            self.temporal_state = torch.zeros(x.size(0), self.n_temporal_states, self.n_expression + self.n_reg).cuda()
         if reset_smoothing:
-            self.temporal_state = self.temporal_state.zeros_() 
+            self.temporal_state = self.temporal_state.zeros_()
 
         x = F.relu(self.bn1(self.conv1(x)), True)
         x = F.max_pool2d(self.conv2(x), 2, stride=2)
@@ -205,24 +208,12 @@ class EmoNet(nn.Module):
             emo_feat = torch.cat((x, hg_features_cat), dim=1)
         else:
             emo_feat = torch.cat([x, hg_features_cat, tmp_out], dim=1)
-        
+
         emo_feat_conv1D = self.conv1x1_input_emo_2(emo_feat)
-        final_features = self.emo_net_2(emo_feat_conv1D)
-        final_features = self.avg_pool_2(final_features)
-        batch_size = final_features.shape[0]
-        final_features = final_features.view(batch_size, final_features.shape[1])
-        final_features = self.emo_fc_2(final_features)
-        
-        if self.temporal_smoothing:
-            with torch.no_grad():
-                self.temporal_state[:,:-1,:] = self.temporal_state[:,1:,:]
-                self.temporal_state[:,-1,:] = final_features 
-                final_features = torch.sum(self.temporal_weights*self.temporal_state, dim=1)
 
-        return {'heatmap': tmp_out, 'expression': final_features[:,:-2], 'valence': final_features[:,-2], 'arousal':final_features[:,-1]}
+        return emo_feat_conv1D
 
-  
     def eval(self):
-        
+
         for module in self.children():
             module.eval()
