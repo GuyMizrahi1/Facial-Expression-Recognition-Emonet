@@ -1,12 +1,13 @@
+import os
 import torch
 from tqdm import tqdm  # progress bar
 from typing import Tuple
-from IPython import display
 from torch import nn, optim
 from datetime import datetime
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader
+from IPython.display import display, Image
 from torchvision import datasets, transforms
 from emonet.models.fer_emonet import FerEmonet
 from torchvision.transforms import functional as F
@@ -27,7 +28,8 @@ class Trainer:
         self.early_stopping_patience = early_stopping_patience
         self.min_delta = min_delta
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)  # Initialize the optimizer (Adam and not SGD)
-        self.scheduler = LearningRateScheduler(self.optimizer, initial_lr=self.lr)  # Initialize the LR scheduler
+        self.scheduler = LearningRateScheduler(self.optimizer, t_0=10, t_mult=1, eta_min=0, last_epoch=-1,
+                                               initial_lr=self.lr)  # Initialize the LR scheduler
         self.criterion = nn.CrossEntropyLoss()  # Loss function
         self.counter = 0  # Counter for early stopping
         self.best_loss = float('inf')  # Initialize the best loss for early stopping
@@ -42,8 +44,7 @@ class Trainer:
         self.model.to(self.device)
 
     def plot_progress(self):
-        # Clear the current figure and display the plot
-        display.clear_output(wait=True)
+        plot_path = os.path.join(self.output_dir, 'training_progress.png')
         plt.figure(figsize=(15, 5))
 
         # Plot training and validation loss
@@ -72,8 +73,9 @@ class Trainer:
         plt.legend()
 
         plt.tight_layout()
-        display.display(plt.gcf())
+        plt.savefig(plot_path)  # Save the plot to a file
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
+        display(Image(filename=plot_path))  # Display the saved plot image in the notebook
 
     def check_early_stopping(self, validation_loss):
         # Check if early stopping criteria are met
@@ -158,7 +160,7 @@ class Trainer:
             self.val_accuracies.append(validation_accuracy)
 
             # Update Learning Rate
-            self.scheduler.step()
+            self.scheduler.step(epoch)
 
             if self.check_early_stopping(validation_loss):
                 print(f"Validation Loss did not improve for {self.early_stopping_patience} epochs. "
@@ -227,7 +229,6 @@ def load_dataset(dataset_path: str, subset: str, transform: transforms.Compose) 
 # Main function to load and transform datasets for training, validation, and testing
 def load_and_transform_datasets(dataset_path: str) -> Tuple[
     datasets.VisionDataset, datasets.VisionDataset, datasets.VisionDataset]:
-
     train_dataset = load_dataset(dataset_path, 'train', dataset_transform())
     val_dataset = load_dataset(dataset_path, 'val', dataset_transform())
     test_dataset = load_dataset(dataset_path, 'test', dataset_transform())
@@ -246,7 +247,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     arg_parser.add_argument("--output-dir", type=str, default="out", help="Path where the best model will be saved")
     arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
-    arg_parser.add_argument("--lr", type=float, default=0.00001, help="Learning rate")
+    arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
     arg_parser.add_argument("--min_delta", type=float, default=0.001, help="Min delta of validation loss for ES")
     arg_parser.add_argument("--num-workers", type=int, default=1,
@@ -290,5 +291,13 @@ if __name__ == "__main__":
         min_delta=args.min_delta
     ).run()
 
-    # Save the model
-    torch.save(fer_emonet_model.state_dict(), f'emonet_{args.emonet_classes}_trained.pth')
+    # Define the folder path
+    trained_models_folder = 'trained_models_folder'
+
+    # Check if the folder exists, if not, create it
+    if not os.path.exists(trained_models_folder):
+        os.makedirs(trained_models_folder)
+
+    # Save the model in the specified folder
+    model_save_path = os.path.join(trained_models_folder, f'emonet_{args.emonet_classes}_trained_{current_time}.pth')
+    torch.save(fer_emonet_model.state_dict(), model_save_path)
