@@ -111,6 +111,7 @@ class Trainer:
         # Train the model
         self.model.train()  # Set the model to training mode
         for epoch in range(self.max_epochs):
+            print(f'Epoch {epoch + 1}/{self.max_epochs}, Learning Rate: {self.optimizer.param_groups[0]["lr"]}')
             total_loss = 0
             correct_predictions = 0
             total_predictions = 0
@@ -140,12 +141,12 @@ class Trainer:
                 progress_bar.set_postfix({'loss': f'{current_loss:.4f}'})
                 progress_bar.update(1)  # Manually increment the progress bar by one step
 
+            progress_bar.close()
+
             train_accuracy = correct_predictions / total_predictions
 
             validation_loss, validation_accuracy = self.validate()
             train_loss = total_loss / len(self.training_dataloader)
-
-            progress_bar.close()
 
             print(f'Epoch {epoch + 1}, Train Loss: {train_loss}, Validation Loss: {validation_loss}, '
                   f'Train Accuracy: {train_accuracy}, Validation Accuracy: {validation_accuracy}')
@@ -172,6 +173,7 @@ class Trainer:
         with torch.no_grad():  # No need to compute gradients
             for batch in self.testing_dataloader:
                 inputs, labels = batch
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.criterion(outputs, labels)
                 total_loss += loss.item()
@@ -212,8 +214,8 @@ def dataset_transform() -> transforms.Compose:
     return transforms.Compose([
         transforms.Resize(256),  # Resize to 256x256
         transforms.ToTensor(),  # Convert to tensor
-        GrayscaleToRGB()  # Convert grayscale images to RGB
-        # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
+        GrayscaleToRGB(),  # Convert grayscale images to RGB
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
     ])
 
 
@@ -242,10 +244,10 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="fer2013", help="Path to the dataset")
     arg_parser.add_argument("--output-dir", type=str, default="out", help="Path where the best model will be saved")
-    arg_parser.add_argument("--epochs", type=int, default=20, help="Number of training epochs")
+    arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
-    arg_parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
-    arg_parser.add_argument("--early_stopping_patience", type=int, default=4, help="Early Stopping")
+    arg_parser.add_argument("--lr", type=float, default=0.00001, help="Learning rate")
+    arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
     arg_parser.add_argument("--min_delta", type=float, default=0.001, help="Min delta of validation loss for ES")
     arg_parser.add_argument("--num-workers", type=int, default=1,
                             help="The number of subprocesses to use for data loading."
