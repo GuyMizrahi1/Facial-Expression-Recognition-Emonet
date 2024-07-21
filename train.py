@@ -242,7 +242,7 @@ def load_and_transform_datasets(dataset_path: str) -> Tuple[
 # Set up command-line arguments for the training script
 def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
-    arg_parser.add_argument("--dataset-path", type=str, default="fer2013", help="Path to the dataset")
+    arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
     arg_parser.add_argument("--output-dir", type=str, default="out", help="Path where the best model will be saved")
     arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")

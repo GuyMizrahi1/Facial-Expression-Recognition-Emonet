@@ -47,7 +47,7 @@ with tarfile.open("fer2013.tar.gz", "r") as tar:
 output_folder_path = "../fer2013"
 
 # Load the CSV file into a Pandas DataFrame
-df = pd.read_csv("../fer2013/fer2013/fer2013.csv")
+df = pd.read_csv("fer2013/fer2013/fer2013.csv")
 
 # Define a dictionary to map emotion codes to labels
 emotion_labels = {
