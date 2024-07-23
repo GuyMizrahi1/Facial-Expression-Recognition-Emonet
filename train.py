@@ -247,7 +247,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
     arg_parser.add_argument("--output-dir", type=str, default="out", help="Path where the best model will be saved")
-    arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
+    arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
     arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
@@ -302,13 +302,13 @@ if __name__ == "__main__":
         min_delta=args.min_delta
     ).run()
 
-    # Define the folder path
-    trained_models_folder = 'trained_models_folder'
-
-    # Check if the folder exists, if not, create it
-    if not os.path.exists(trained_models_folder):
-        os.makedirs(trained_models_folder)
-
-    # Save the model in the specified folder
-    model_save_path = os.path.join(trained_models_folder, f'emonet_{args.emonet_classes}_trained_{current_time}.pth')
-    torch.save(fer_emonet_model.state_dict(), model_save_path)
+    # # Define the folder path
+    # trained_models_folder = 'trained_models_folder'
+    #
+    # # Check if the folder exists, if not, create it
+    # if not os.path.exists(trained_models_folder):
+    #     os.makedirs(trained_models_folder)
+    #
+    # # Save the model in the specified folder
+    # model_save_path = os.path.join(trained_models_folder, f'emonet_{args.emonet_classes}_trained_{current_time}.pth')
+    # torch.save(fer_emonet_model.state_dict(), model_save_path)
