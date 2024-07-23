@@ -11,6 +11,8 @@ from IPython.display import display, Image
 from torchvision import datasets, transforms
 from emonet.models.fer_emonet import FerEmonet
 from torchvision.transforms import functional as F
+from emonet.models.fer_multihead import FerMultihead
+from emonet.models.fer_emonet_with_attention import FerEmonetWithAttention
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
 
 
@@ -255,6 +257,10 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
                                  "0 means that the data will be loaded in the main process.")
     arg_parser.add_argument('--emonet_classes', type=int, default=5, choices=[5, 8],
                             help='Number of emotional classes to test the model on. Please use 5 or 8.')
+    arg_parser.add_argument('--attention', type=str, default='Default',
+                            choices=['Default', 'Self-Attention', 'Multi-Head-Attention'],
+                            help='Set the emonet model by its attention mechanism. Please use Default / Self-Attention '
+                                 '/ Multi-Head-Attention.')
 
 
 if __name__ == "__main__":
@@ -275,8 +281,13 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    # Initialize the FerEmonet model
-    fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes)
+    # Initialize the Emonet model
+    if args.attention == 'Self-Attention':
+        fer_emonet_model = FerEmonetWithAttention(emonet_classes=args.emonet_classes)
+    elif args.attention == 'Multi-Head-Attention':
+        fer_emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
+    else:
+        fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes)
 
     Trainer(
         model=fer_emonet_model,

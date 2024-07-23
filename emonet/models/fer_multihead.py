@@ -77,10 +77,6 @@ class FerMultihead(nn.Module):
         return x
 
 
-
-
-
-
 class multi_head_module(nn.Module):
     def __init__(self, embed_dim, num_heads, patch_size):
         super(multi_head_module, self).__init__()
@@ -109,7 +105,6 @@ class multi_head_module(nn.Module):
         # Splitting into patches
         self.unfold = nn.Unfold(kernel_size=patch_size, stride=patch_size)
 
-
     def forward(self, x):
         # Extracts the values from the tensor.shape
         batch_size, feature_maps, height, width = x.shape
@@ -136,8 +131,3 @@ class multi_head_module(nn.Module):
         attn_output = attn_output.permute(1, 0, 2)
 
         return attn_output
-
-
-
-
-
