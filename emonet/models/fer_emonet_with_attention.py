@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from emonet.emonet.models.fer_emonet import FerEmonet
+from emonet.models.fer_emonet import FerEmonet
 
 
 class SelfAttention(nn.Module):

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 import numpy as np
-from ..models.emonet import EmoNet
+from emonet.models.emonet import EmoNet
 
 
 # New Model for Assignment
@@ -39,6 +39,9 @@ class FerEmonet(nn.Module):
         for param in self.emonet.parameters():
             param.requires_grad = emonet_grad
 
+        # setting model to evaluation mode if we want
+        if not emonet_grad:
+            self.emonet.eval()
         # ----------- #
         # Final layer #
         # ----------- #
