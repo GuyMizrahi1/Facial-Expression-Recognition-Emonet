@@ -285,7 +285,7 @@ if __name__ == "__main__":
     # Load and transform datasets, then create DataLoaders for training, validation, and testing
     train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args.dataset_path)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
     # Initialize the Emonet model
