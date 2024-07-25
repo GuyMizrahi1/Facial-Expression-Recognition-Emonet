@@ -46,7 +46,11 @@ class Trainer:
         self.model.to(self.device)
 
     def plot_progress(self):
-        plot_path = os.path.join(self.output_dir, 'training_progress.png')
+        # Ensure the output directory exists
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_training_progress.png')
         plt.figure(figsize=(15, 5))
 
         # Plot training and validation loss
@@ -188,6 +192,9 @@ class Trainer:
         print(f'Test Loss: {test_loss}, Accuracy: {accuracy}')
 
     def save_model(self):
+        # Ensure the output directory exists
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
         # Save the trained model
         torch.save(self.model.state_dict(), f'{self.output_dir}/{self.execution_name}_trained.pth')
 
@@ -246,7 +253,7 @@ def load_and_transform_datasets(dataset_path: str) -> Tuple[
 def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
-    arg_parser.add_argument("--output-dir", type=str, default="out", help="Path where the best model will be saved")
+    arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder", help="Path where the best model will be saved")
     arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
     arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
