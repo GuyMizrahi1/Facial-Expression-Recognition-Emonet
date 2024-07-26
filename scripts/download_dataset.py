@@ -51,13 +51,13 @@ df = pd.read_csv("fer2013/fer2013/fer2013.csv")
 
 # Define a dictionary to map emotion codes to labels
 emotion_labels = {
-    "0": "Angry",
-    "1": "Disgust",
-    "2": "Fear",
-    "3": "Happy",
-    "4": "Sad",
-    "5": "Surprise",
-    "6": "Neutral",
+    "0": "angry",
+    "1": "disgust",
+    "2": "fear",
+    "3": "happy",
+    "4": "sad",
+    "5": "surprise",
+    "6": "neutral",
 }
 # Categories in AffectNet:
 # {0: 'neutral', 1:'happy', 2:'sad', 3:'surprise', 4:'fear', 5:'disgust', 6:'anger', 7:'contempt', 8:'none'}
