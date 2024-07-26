@@ -14,6 +14,14 @@ from torchvision.transforms import functional as F
 from emonet.models.fer_multihead import FerMultihead
 from emonet.models.fer_emonet_with_attention import FerEmonetWithAttention
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
+from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
+import seaborn as sns
+from sklearn.metrics import precision_recall_curve
+import numpy as np
+from sklearn.preprocessing import label_binarize
+from PIL import Image
+
+
 
 
 class Trainer:
@@ -40,6 +48,10 @@ class Trainer:
         self.train_accuracies = []
         self.val_losses = []
         self.val_accuracies = []
+        self.precision_list = []
+        self.recall_list = []
+        self.f1_list = []
+        self.confusion_matrices = []
 
         # Move the model to the appropriate device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -83,6 +95,62 @@ class Trainer:
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
 
+    def plot_confusion_matrix(self):
+        # Calculate confusion matrix for the validation set
+        all_labels = []
+        all_preds = []
+        with torch.no_grad():
+            for batch in self.validation_dataloader:
+                inputs, labels = batch
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                outputs = self.model(inputs)
+                _, predicted = torch.max(outputs.data, 1)
+                all_labels.extend(labels.cpu().numpy())
+                all_preds.extend(predicted.cpu().numpy())
+        conf_matrix = confusion_matrix(all_labels, all_preds)
+
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
+        plt.xlabel('Predicted')
+        plt.ylabel('Actual')
+        plt.title('Confusion Matrix')
+        plt.savefig(os.path.join(self.output_dir, f'{self.execution_name}_confusion_matrix.png'))
+        plt.close()
+
+    def plot_precision_recall_curve(self):
+        all_labels = []
+        all_probs = []
+        with torch.no_grad():
+            for batch in self.validation_dataloader:
+                inputs, labels = batch
+                inputs, labels = inputs.to(self.device), labels.to(self.device)
+                outputs = self.model(inputs)
+                probs = torch.softmax(outputs, dim=1).cpu().numpy()
+                all_labels.extend(labels.cpu().numpy())
+                all_probs.extend(probs)
+        all_labels = label_binarize(all_labels, classes=[0, 1, 2, 3, 4, 5, 6])  # Adjust based on number of classes
+
+        plt.figure(figsize=(10, 8))
+        for i in range(all_labels.shape[1]):
+            precision, recall, _ = precision_recall_curve(all_labels[:, i], np.array(all_probs)[:, i])
+            plt.plot(recall, precision, label=f'Class {i}')
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.title('Precision-Recall Curve')
+        plt.legend()
+        plt.savefig(os.path.join(self.output_dir, f'{self.execution_name}_precision_recall_curve.png'))
+        plt.close()
+
+    def plot_learning_rate(self):
+        lr_schedule = [self.scheduler.get_last_lr()[0] for epoch in range(self.max_epochs)]
+        plt.figure(figsize=(10, 5))
+        plt.plot(range(self.max_epochs), lr_schedule, label='Learning Rate')
+        plt.xlabel('Epoch')
+        plt.ylabel('Learning Rate')
+        plt.title('Learning Rate Schedule')
+        plt.legend()
+        plt.savefig(os.path.join(self.output_dir, f'{self.execution_name}_learning_rate_schedule.png'))
+        plt.close()
     def check_early_stopping(self, validation_loss):
         # Check if early stopping criteria are met
         if self.best_loss - validation_loss > self.min_delta:
@@ -97,10 +165,11 @@ class Trainer:
             return False
 
     def validate(self):
-        # Validate the model on the validation dataset
         self.model.eval()
         total_loss = 0
         correct = 0
+        all_labels = []
+        all_preds = []
         with torch.no_grad():
             for batch in self.validation_dataloader:
                 inputs, labels = batch
@@ -110,9 +179,22 @@ class Trainer:
                 total_loss += loss.item()
                 _, predicted = torch.max(outputs.data, 1)
                 correct += (predicted == labels).sum().item()
+                all_labels.extend(labels.cpu().numpy())
+                all_preds.extend(predicted.cpu().numpy())
+
         validation_loss = total_loss / len(self.validation_dataloader)
         accuracy = correct / len(self.validation_dataloader.dataset)
-        print(f'Validation Loss: {validation_loss}, Accuracy: {accuracy}')
+        precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
+        conf_matrix = confusion_matrix(all_labels, all_preds)
+
+        self.precision_list.append(precision)
+        self.recall_list.append(recall)
+        self.f1_list.append(f1)
+        self.confusion_matrices.append(conf_matrix)
+
+        print(f'Validation Loss: {validation_loss}, Accuracy: {accuracy}, Precision: {precision}, '
+              f'Recall: {recall}, F1 Score: {f1}')
+        print(f'Confusion Matrix:\n{conf_matrix}')
         return validation_loss, accuracy
 
     def train(self):
@@ -174,11 +256,12 @@ class Trainer:
                 break
 
     def test(self):
-        # Test the model on the testing dataset
-        self.model.eval()  # Set the model to evaluation mode
+        self.model.eval()
         total_loss = 0
         correct = 0
-        with torch.no_grad():  # No need to compute gradients
+        all_labels = []
+        all_preds = []
+        with torch.no_grad():
             for batch in self.testing_dataloader:
                 inputs, labels = batch
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
@@ -187,9 +270,17 @@ class Trainer:
                 total_loss += loss.item()
                 _, predicted = torch.max(outputs.data, 1)
                 correct += (predicted == labels).sum().item()
+                all_labels.extend(labels.cpu().numpy())
+                all_preds.extend(predicted.cpu().numpy())
+
         test_loss = total_loss / len(self.testing_dataloader)
         accuracy = correct / len(self.testing_dataloader.dataset)
-        print(f'Test Loss: {test_loss}, Accuracy: {accuracy}')
+        precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
+        conf_matrix = confusion_matrix(all_labels, all_preds)
+
+        print(f'Test Loss: {test_loss}, Accuracy: {accuracy}, Precision: {precision}, '
+              f'Recall: {recall}, F1 Score: {f1}')
+        print(f'Confusion Matrix:\n{conf_matrix}')
 
     def save_model(self):
         # Ensure the output directory exists
@@ -202,6 +293,9 @@ class Trainer:
         # Run the training, validation, testing, and save the model
         self.train()
         self.plot_progress()
+        self.plot_confusion_matrix()
+        self.plot_precision_recall_curve()
+        self.plot_learning_rate()
         if not self.early_stop:
             self.test()
             self.save_model()
@@ -219,6 +313,17 @@ class GrayscaleToRGB:
     def __repr__(self):
         return self.__class__.__name__ + '()'
 
+class JpegToTensor:
+    def __call__(self, img_path):
+        """
+        Args: img_path (str): Path to the JPEG image file.
+        Returns: Tensor: Converted image tensor.
+        """
+        img = Image.open(img_path).convert("RGB")
+        return F.to_tensor(img)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
 
 # Define transformations for the training, validation, and testing datasets
 def dataset_transform() -> transforms.Compose:
