@@ -19,7 +19,7 @@ import seaborn as sns
 from sklearn.metrics import precision_recall_curve
 import numpy as np
 from sklearn.preprocessing import label_binarize
-from PIL import Image
+
 
 
 
@@ -109,13 +109,16 @@ class Trainer:
                 all_preds.extend(predicted.cpu().numpy())
         conf_matrix = confusion_matrix(all_labels, all_preds)
 
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_confusion_matrix.png')
         plt.figure(figsize=(10, 8))
         sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
         plt.title('Confusion Matrix')
-        plt.savefig(os.path.join(self.output_dir, f'{self.execution_name}_confusion_matrix.png'))
-        plt.close()
+        plt.tight_layout()
+        plt.savefig(plot_path)  # Save the plot to a file
+        plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
+        display(Image(filename=plot_path))  # Display the saved plot image in the notebook
 
     def plot_precision_recall_curve(self):
         all_labels = []
@@ -130,6 +133,7 @@ class Trainer:
                 all_probs.extend(probs)
         all_labels = label_binarize(all_labels, classes=[0, 1, 2, 3, 4, 5, 6])  # Adjust based on number of classes
 
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_precision_recall_curve.png')
         plt.figure(figsize=(10, 8))
         for i in range(all_labels.shape[1]):
             precision, recall, _ = precision_recall_curve(all_labels[:, i], np.array(all_probs)[:, i])
@@ -138,19 +142,26 @@ class Trainer:
         plt.ylabel('Precision')
         plt.title('Precision-Recall Curve')
         plt.legend()
-        plt.savefig(os.path.join(self.output_dir, f'{self.execution_name}_precision_recall_curve.png'))
-        plt.close()
+        plt.tight_layout()
+        plt.savefig(plot_path)  # Save the plot to a file
+        plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
+        display(Image(filename=plot_path))  # Display the saved plot image in the notebook
 
     def plot_learning_rate(self):
         lr_schedule = [self.scheduler.get_last_lr()[0] for epoch in range(self.max_epochs)]
+
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_learning_rate_schedule.png')
         plt.figure(figsize=(10, 5))
         plt.plot(range(self.max_epochs), lr_schedule, label='Learning Rate')
         plt.xlabel('Epoch')
         plt.ylabel('Learning Rate')
         plt.title('Learning Rate Schedule')
         plt.legend()
-        plt.savefig(os.path.join(self.output_dir, f'{self.execution_name}_learning_rate_schedule.png'))
-        plt.close()
+        plt.tight_layout()
+        plt.savefig(plot_path)  # Save the plot to a file
+        plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
+        display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+
     def check_early_stopping(self, validation_loss):
         # Check if early stopping criteria are met
         if self.best_loss - validation_loss > self.min_delta:
@@ -313,17 +324,7 @@ class GrayscaleToRGB:
     def __repr__(self):
         return self.__class__.__name__ + '()'
 
-class JpegToTensor:
-    def __call__(self, img_path):
-        """
-        Args: img_path (str): Path to the JPEG image file.
-        Returns: Tensor: Converted image tensor.
-        """
-        img = Image.open(img_path).convert("RGB")
-        return F.to_tensor(img)
 
-    def __repr__(self):
-        return self.__class__.__name__ + '()'
 
 # Define transformations for the training, validation, and testing datasets
 def dataset_transform() -> transforms.Compose:
