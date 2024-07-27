@@ -147,20 +147,7 @@ class Trainer:
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
 
-    def plot_learning_rate(self):
-        lr_schedule = [self.scheduler.get_last_lr()[0] for epoch in range(self.max_epochs)]
 
-        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_learning_rate_schedule.png')
-        plt.figure(figsize=(10, 5))
-        plt.plot(range(self.max_epochs), lr_schedule, label='Learning Rate')
-        plt.xlabel('Epoch')
-        plt.ylabel('Learning Rate')
-        plt.title('Learning Rate Schedule')
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(plot_path)  # Save the plot to a file
-        plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
-        display(Image(filename=plot_path))  # Display the saved plot image in the notebook
 
     def check_early_stopping(self, validation_loss):
         # Check if early stopping criteria are met
@@ -306,7 +293,6 @@ class Trainer:
         self.plot_progress()
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
-        self.plot_learning_rate()
         if not self.early_stop:
             self.test()
             self.save_model()
