@@ -273,7 +273,7 @@ def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
 def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
-    arg_parser.add_argument("--dataset-path-mma", type=str, default="../mma/MMAFEDB", help="Path to the dataset mma")
+    arg_parser.add_argument("--dataset-path-mma", type=str, default="../Facial-Expression-Recognition-Emonet/scripts/mma/MMAFEDB", help="Path to the dataset mma")
     arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder", help="Path where the best model will be saved")
     arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
