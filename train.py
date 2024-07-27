@@ -6,7 +6,7 @@ from torch import nn, optim
 from datetime import datetime
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from IPython.display import display, Image
 from torchvision import datasets, transforms
 from emonet.models.fer_emonet import FerEmonet
@@ -334,6 +334,14 @@ def dataset_transform() -> transforms.Compose:
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
     ])
 
+def dataset_transform_mma() -> transforms.Compose:
+    #TODO: change RGB
+    return transforms.Compose([
+        transforms.Resize(256),  # Resize to 256x256
+        transforms.ToTensor(),  # Convert to tensor
+        GrayscaleToRGB(),  # Convert grayscale images to RGB
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
+    ])
 
 # Load datasets from the specified path and apply transformations
 def load_dataset(dataset_path: str, subset: str, transform: transforms.Compose) -> datasets.VisionDataset:
@@ -353,11 +361,24 @@ def load_and_transform_datasets(dataset_path: str) -> Tuple[
 
     return train_dataset, val_dataset, test_dataset
 
+def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
+    datasets.VisionDataset, datasets.VisionDataset, datasets.VisionDataset]:
+    train_dataset = load_dataset(dataset_path, 'train', dataset_transform_mma())
+    val_dataset = load_dataset(dataset_path, 'valid', dataset_transform_mma())
+    test_dataset = load_dataset(dataset_path, 'test', dataset_transform_mma())
+
+    print(f'Using {len(train_dataset)} images for training.')
+    print(f'Using {len(val_dataset)} images for evaluation.')
+    print(f'Using {len(test_dataset)} images for testing.')
+
+    return train_dataset, val_dataset, test_dataset
+
 
 # Set up command-line arguments for the training script
 def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
+    arg_parser.add_argument("--dataset-path-mma", type=str, default="../Facial-Expression-Recognition-Emonet/mma/MMAFEDB", help="Path to the dataset mma")
     arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder", help="Path where the best model will be saved")
     arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
@@ -389,9 +410,15 @@ if __name__ == "__main__":
 
     # Load and transform datasets, then create DataLoaders for training, validation, and testing
     train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args.dataset_path)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+    train_dataset_mma, val_dataset_mma, test_dataset_mma = load_and_transform_datasets_mma(args.dataset_path_mma)
+
+    combined_dataset_train = ConcatDataset([train_dataset, train_dataset_mma])
+    combined_dataset_val = ConcatDataset([val_dataset, val_dataset_mma])
+    combined_dataset_test = ConcatDataset([test_dataset, test_dataset_mma])
+
+    train_loader = DataLoader(combined_dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    val_loader = DataLoader(combined_dataset_val, batch_size=32, shuffle=False)
+    test_loader = DataLoader(combined_dataset_test, batch_size=32, shuffle=False)
 
     # Initialize the Emonet model
     if args.attention == 'Self-Attention':
