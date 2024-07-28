@@ -60,10 +60,10 @@ class Trainer:
             os.makedirs(self.output_dir)
 
         plot_path = os.path.join(self.output_dir, f'{self.execution_name}_training_progress.png')
-        plt.figure(figsize=(15, 5))
+        plt.figure(figsize=(20, 10))
 
         # Plot training and validation loss
-        plt.subplot(1, 3, 1)
+        plt.subplot(1, 2, 1)
         plt.plot(self.train_losses, label='Training Loss')
         plt.plot(self.val_losses, label='Validation Loss')
         plt.xlabel('Epoch')
@@ -71,20 +71,13 @@ class Trainer:
         plt.title('Training and Validation Loss')
         plt.legend()
 
-        # Plot validation accuracy
-        plt.subplot(1, 3, 2)
+        # Plot training and validation accuracy
+        plt.subplot(1, 2, 2)
+        plt.plot(self.train_accuracies, label='Training Accuracy')
         plt.plot(self.val_accuracies, label='Validation Accuracy')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
-        plt.title('Validation Accuracy')
-        plt.legend()
-
-        # Plot training accuracy
-        plt.subplot(1, 3, 3)
-        plt.plot(self.train_accuracies, label='Training Accuracy')
-        plt.xlabel('Epoch')
-        plt.ylabel('Accuracy')
-        plt.title('Training Accuracy')
+        plt.title('Training and Validation Accuracy')
         plt.legend()
 
         plt.tight_layout()
