@@ -236,10 +236,10 @@ class Trainer:
             # Update Learning Rate
             # self.scheduler.step(epoch)
 
-            # if self.check_early_stopping(validation_loss):
-            #     print(f"Validation Loss did not improve for {self.early_stopping_patience} epochs. "
-            #           f"Early stopping triggered.")
-            #     break
+            if self.check_early_stopping(validation_loss):
+                print(f"Validation Loss did not improve for {self.early_stopping_patience} epochs. "
+                      f"Early stopping triggered.")
+                break
 
     def test(self):
         self.model.eval()
@@ -281,7 +281,6 @@ class Trainer:
         self.plot_progress()
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
-        # if not self.early_stop:
         self.test()
         self.save_model()
 
