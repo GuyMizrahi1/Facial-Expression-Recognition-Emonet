@@ -21,9 +21,6 @@ import numpy as np
 from sklearn.preprocessing import label_binarize
 
 
-
-
-
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
                  output_dir, max_epochs, early_stopping_patience, min_delta):
@@ -63,10 +60,10 @@ class Trainer:
             os.makedirs(self.output_dir)
 
         plot_path = os.path.join(self.output_dir, f'{self.execution_name}_training_progress.png')
-        plt.figure(figsize=(15, 5))
+        plt.figure(figsize=(20, 10))
 
         # Plot training and validation loss
-        plt.subplot(1, 3, 1)
+        plt.subplot(1, 2, 1)
         plt.plot(self.train_losses, label='Training Loss')
         plt.plot(self.val_losses, label='Validation Loss')
         plt.xlabel('Epoch')
@@ -74,20 +71,13 @@ class Trainer:
         plt.title('Training and Validation Loss')
         plt.legend()
 
-        # Plot validation accuracy
-        plt.subplot(1, 3, 2)
+        # Plot training and validation accuracy
+        plt.subplot(1, 2, 2)
+        plt.plot(self.train_accuracies, label='Training Accuracy')
         plt.plot(self.val_accuracies, label='Validation Accuracy')
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
-        plt.title('Validation Accuracy')
-        plt.legend()
-
-        # Plot training accuracy
-        plt.subplot(1, 3, 3)
-        plt.plot(self.train_accuracies, label='Training Accuracy')
-        plt.xlabel('Epoch')
-        plt.ylabel('Accuracy')
-        plt.title('Training Accuracy')
+        plt.title('Training and Validation Accuracy')
         plt.legend()
 
         plt.tight_layout()
@@ -146,8 +136,6 @@ class Trainer:
         plt.savefig(plot_path)  # Save the plot to a file
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
-
-
 
     def check_early_stopping(self, validation_loss):
         # Check if early stopping criteria are met
@@ -246,12 +234,12 @@ class Trainer:
             self.val_accuracies.append(validation_accuracy)
 
             # Update Learning Rate
-            self.scheduler.step(epoch)
+            # self.scheduler.step(epoch)
 
-            if self.check_early_stopping(validation_loss):
-                print(f"Validation Loss did not improve for {self.early_stopping_patience} epochs. "
-                      f"Early stopping triggered.")
-                break
+            # if self.check_early_stopping(validation_loss):
+            #     print(f"Validation Loss did not improve for {self.early_stopping_patience} epochs. "
+            #           f"Early stopping triggered.")
+            #     break
 
     def test(self):
         self.model.eval()
@@ -293,9 +281,9 @@ class Trainer:
         self.plot_progress()
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
-        if not self.early_stop:
-            self.test()
-            self.save_model()
+        # if not self.early_stop:
+        self.test()
+        self.save_model()
 
 
 class GrayscaleToRGB:
@@ -311,7 +299,6 @@ class GrayscaleToRGB:
         return self.__class__.__name__ + '()'
 
 
-
 # Define transformations for the training, validation, and testing datasets
 def dataset_transform() -> transforms.Compose:
     return transforms.Compose([
@@ -321,14 +308,16 @@ def dataset_transform() -> transforms.Compose:
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
     ])
 
+
 def dataset_transform_mma() -> transforms.Compose:
-    #TODO: change RGB
+    # TODO: change RGB
     return transforms.Compose([
         transforms.Resize(256),  # Resize to 256x256
         transforms.ToTensor(),  # Convert to tensor
         GrayscaleToRGB(),  # Convert grayscale images to RGB
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
     ])
+
 
 # Load datasets from the specified path and apply transformations
 def load_dataset(dataset_path: str, subset: str, transform: transforms.Compose) -> datasets.VisionDataset:
@@ -348,6 +337,7 @@ def load_and_transform_datasets(dataset_path: str) -> Tuple[
 
     return train_dataset, val_dataset, test_dataset
 
+
 def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
     datasets.VisionDataset, datasets.VisionDataset, datasets.VisionDataset]:
     train_dataset = load_dataset(dataset_path, 'train', dataset_transform_mma())
@@ -365,8 +355,11 @@ def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
 def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
-    arg_parser.add_argument("--dataset-path-mma", type=str, default="../Facial-Expression-Recognition-Emonet/mma/MMAFEDB", help="Path to the dataset mma")
-    arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder", help="Path where the best model will be saved")
+    arg_parser.add_argument("--dataset-path-mma", type=str,
+                            default="../Facial-Expression-Recognition-Emonet/mma/MMAFEDB",
+                            help="Path to the dataset mma")
+    arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder",
+                            help="Path where the best model will be saved")
     arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
     arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
@@ -403,7 +396,8 @@ if __name__ == "__main__":
     combined_dataset_val = ConcatDataset([val_dataset, val_dataset_mma])
     combined_dataset_test = ConcatDataset([test_dataset, test_dataset_mma])
 
-    train_loader = DataLoader(combined_dataset_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    train_loader = DataLoader(combined_dataset_train, batch_size=args.batch_size, shuffle=True,
+                              num_workers=args.num_workers)
     val_loader = DataLoader(combined_dataset_val, batch_size=32, shuffle=False)
     test_loader = DataLoader(combined_dataset_test, batch_size=32, shuffle=False)
 
