@@ -373,7 +373,8 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
                             choices=['Default', 'Self-Attention', 'Multi-Head-Attention'],
                             help='Set the emonet model by its attention mechanism. Please use Default / Self-Attention '
                                  '/ Multi-Head-Attention.')
-
+    arg_parser.add_argument('--final_layer_type', type=int, default=1, choices=[1, 2, 3],
+                        help='Type of the final layers in the model.')
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Train our version of Emonet on Fer2013")
@@ -406,7 +407,7 @@ if __name__ == "__main__":
     elif args.attention == 'Multi-Head-Attention':
         fer_emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
     else:
-        fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes)
+        fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes, final_layer_type=args.final_layer_type)
 
     Trainer(
         model=fer_emonet_model,
