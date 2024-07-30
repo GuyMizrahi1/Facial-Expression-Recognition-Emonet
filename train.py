@@ -24,6 +24,8 @@ from sklearn.preprocessing import label_binarize
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
                  output_dir, max_epochs, early_stopping_patience, min_delta):
+        # for saving model
+        self.best_model_state = None
         self.model = model
         self.training_dataloader = training_dataloader
         self.validation_dataloader = validation_dataloader
@@ -235,11 +237,18 @@ class Trainer:
 
             # Update Learning Rate
             # self.scheduler.step(epoch)
+            if validation_loss < self.best_loss:
+                self.best_loss = validation_loss
+                self.best_model_state = self.model.state_dict()
 
             if self.check_early_stopping(validation_loss):
                 print(f"Validation Loss did not improve for {self.early_stopping_patience} epochs. "
                       f"Early stopping triggered.")
                 break
+
+        # at the emd of training we load the best model
+        if self.best_model_state is not None:
+            self.model.load_state_dict(self.best_model_state)
 
     def test(self):
         self.model.eval()
