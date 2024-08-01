@@ -5,7 +5,6 @@ from tqdm import tqdm  # progress bar
 from typing import Tuple
 from torch import nn, optim
 from datetime import datetime
-from google.colab import drive
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 from torch.utils.data import DataLoader, ConcatDataset
@@ -22,8 +21,16 @@ from sklearn.metrics import precision_recall_curve
 import numpy as np
 from sklearn.preprocessing import label_binarize
 
-# Mount Google Drive
-drive.mount('/content/drive')
+# Check if running in Google Colab
+try:
+    from google.colab import drive
+    IN_COLAB = True
+except ImportError:
+    IN_COLAB = False
+
+if IN_COLAB:
+    # Mount Google Drive
+    drive.mount('/content/drive')
 
 
 class Trainer:
@@ -281,7 +288,15 @@ class Trainer:
               f'Recall: {recall}, F1 Score: {f1}')
         print(f'Confusion Matrix:\n{conf_matrix}')
 
-    def save_results_to_drive(self):
+    def save_model_and_results(self):
+        # Ensure the output directory exists
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
+        # Save the trained model locally
+        local_model_path = f'{self.output_dir}/{self.execution_name}_trained.pth'
+        torch.save(self.model.state_dict(), local_model_path)
+
         # Create a DataFrame with the training and validation metrics
         results_df = pd.DataFrame({
             'Epoch': list(range(1, len(self.train_losses) + 1)),
@@ -294,35 +309,28 @@ class Trainer:
         # Print the DataFrame
         print(results_df)
 
-        # Define the Google Drive path to save the CSV file
-        drive_folder_path = '/content/drive/MyDrive/1frfusXOtmmxYaBml56lpZ2Lp90npFawH'
-        csv_file_path = os.path.join(drive_folder_path, f'{self.execution_name}_training_results.csv')
+        if IN_COLAB:
+            # Define the Google Drive path
+            drive_folder_path = '/content/drive/MyDrive/1frfusXOtmmxYaBml56lpZ2Lp90npFawH'
+            run_folder_path = os.path.join(drive_folder_path, self.execution_name)
 
-        # Save the DataFrame as a CSV file in Google Drive
-        results_df.to_csv(csv_file_path, index=False)
-        print(f'Results saved to {csv_file_path}')
+            # Create a folder for the current run in Google Drive
+            if not os.path.exists(run_folder_path):
+                os.makedirs(run_folder_path)
 
-    def save_model(self):
-        # Ensure the output directory exists
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
+            # Save the model to Google Drive
+            drive_model_path = os.path.join(run_folder_path, f'{self.execution_name}_trained.pth')
+            os.system(f'cp {local_model_path} {drive_model_path}')
+            print(f'Model saved to {drive_model_path}')
 
-        # Save the trained model locally
-        local_model_path = f'{self.output_dir}/{self.execution_name}_trained.pth'
-        torch.save(self.model.state_dict(), local_model_path)
+            # Define the Google Drive path to save the CSV file
+            csv_file_path = os.path.join(drive_folder_path, f'{self.execution_name}_training_results.csv')
 
-        # Define the Google Drive path
-        drive_folder_path = '/content/drive/MyDrive/1frfusXOtmmxYaBml56lpZ2Lp90npFawH'
-        run_folder_path = os.path.join(drive_folder_path, self.execution_name)
-
-        # Create a folder for the current run in Google Drive
-        if not os.path.exists(run_folder_path):
-            os.makedirs(run_folder_path)
-
-        # Save the model to Google Drive
-        drive_model_path = os.path.join(run_folder_path, f'{self.execution_name}_trained.pth')
-        os.system(f'cp {local_model_path} {drive_model_path}')
-        print(f'Model saved to {drive_model_path}')
+            # Save the DataFrame as a CSV file in Google Drive
+            results_df.to_csv(csv_file_path, index=False)
+            print(f'Results saved to {csv_file_path}')
+        else:
+            print("Not running in Google Colab. Skipping Google Drive save.")
 
     def run(self):
         # Run the training, validation, testing, and save the model
@@ -331,8 +339,8 @@ class Trainer:
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
         self.test()
-        self.save_model()
-        self.save_results_to_drive()
+        # self.save_model()
+        self.save_model_and_results()
 
 
 class GrayscaleToRGB:
