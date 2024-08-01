@@ -21,17 +21,6 @@ from sklearn.metrics import precision_recall_curve
 import numpy as np
 from sklearn.preprocessing import label_binarize
 
-# Check if running in Google Colab
-try:
-    from google.colab import drive
-    IN_COLAB = True
-except ImportError:
-    IN_COLAB = False
-
-if IN_COLAB:
-    # Mount Google Drive
-    drive.mount('/content/drive')
-
 
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
@@ -296,6 +285,7 @@ class Trainer:
         # Save the trained model locally
         local_model_path = f'{self.output_dir}/{self.execution_name}_trained.pth'
         torch.save(self.model.state_dict(), local_model_path)
+        print(f'Model saved to {local_model_path}')
 
         # Create a DataFrame with the training and validation metrics
         results_df = pd.DataFrame({
@@ -309,28 +299,12 @@ class Trainer:
         # Print the DataFrame
         print(results_df)
 
-        if IN_COLAB:
-            # Define the Google Drive path
-            drive_folder_path = '/content/drive/MyDrive/1frfusXOtmmxYaBml56lpZ2Lp90npFawH'
-            run_folder_path = os.path.join(drive_folder_path, self.execution_name)
+        # Define the local path to save the CSV file
+        csv_file_path = os.path.join(self.output_dir, f'{self.execution_name}_training_results.csv')
 
-            # Create a folder for the current run in Google Drive
-            if not os.path.exists(run_folder_path):
-                os.makedirs(run_folder_path)
-
-            # Save the model to Google Drive
-            drive_model_path = os.path.join(run_folder_path, f'{self.execution_name}_trained.pth')
-            os.system(f'cp {local_model_path} {drive_model_path}')
-            print(f'Model saved to {drive_model_path}')
-
-            # Define the Google Drive path to save the CSV file
-            csv_file_path = os.path.join(drive_folder_path, f'{self.execution_name}_training_results.csv')
-
-            # Save the DataFrame as a CSV file in Google Drive
-            results_df.to_csv(csv_file_path, index=False)
-            print(f'Results saved to {csv_file_path}')
-        else:
-            print("Not running in Google Colab. Skipping Google Drive save.")
+        # Save the DataFrame as a CSV file locally
+        results_df.to_csv(csv_file_path, index=False)
+        print(f'Results saved to {csv_file_path}')
 
     def run(self):
         # Run the training, validation, testing, and save the model
@@ -339,7 +313,6 @@ class Trainer:
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
         self.test()
-        # self.save_model()
         self.save_model_and_results()
 
 
