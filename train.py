@@ -238,7 +238,6 @@ class Trainer:
             # Update Learning Rate
             # self.scheduler.step(epoch)
             if validation_loss < self.best_loss:
-                self.best_loss = validation_loss
                 self.best_model_state = self.model.state_dict()
 
             if self.check_early_stopping(validation_loss):
@@ -383,7 +382,8 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
                             help='Set the emonet model by its attention mechanism. Please use Default / Self-Attention '
                                  '/ Multi-Head-Attention.')
     arg_parser.add_argument('--final_layer_type', type=int, default=1, choices=[1, 2, 3],
-                        help='Type of the final layers in the model.')
+                            help='Type of the final layers in the model.')
+
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Train our version of Emonet on Fer2013")
