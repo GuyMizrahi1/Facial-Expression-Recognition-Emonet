@@ -11,8 +11,10 @@ from PIL import Image
 kaggle_json_path = os.path.expanduser("~/.kaggle/kaggle.json")
 
 if not os.path.isfile(kaggle_json_path):
-    username = input("Kaggle username: ")
-    api_key = input("Kaggle API key: ")
+    # username = input("Kaggle username: ")
+    # api_key = input("Kaggle API key: ")
+    username = 'guymizrahi15'
+    api_key = 'adb5da77e1757b1502174a67ea0ff791'
 
     # Create the directory if it doesn't exist
     os.makedirs(os.path.dirname(kaggle_json_path), exist_ok=True)

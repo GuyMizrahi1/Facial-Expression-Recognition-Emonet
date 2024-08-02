@@ -14,7 +14,7 @@ from torchvision import datasets, transforms
 from emonet.models.fer_emonet import FerEmonet
 from torchvision.transforms import functional as F
 from emonet.models.fer_multihead import FerMultihead
-from emonet.models.fer_emonet_with_attention import FerEmonetWithAttention
+from emonet.models.emonet_self_attention import EmonetWithSelfAttention
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 import seaborn as sns
@@ -319,30 +319,10 @@ class Trainer:
             self.save_to_google_drive(local_model_path, f'{self.execution_name}_trained.pth')
             self.save_to_google_drive(csv_file_path, f'{self.execution_name}_training_results.csv')
 
-
-    # def save_to_google_drive(self, data, filename):
-    #     from google.colab import drive
-    #     drive.mount('/content/drive')
-    #     if self.drive_type == "shared":
-    #         drive_path = f'/content/drive/Shareddrives/{self.google_drive_folder_id}/{self.execution_name}'
-    #     else:  # Default to "my_drive"
-    #         drive_path = f'/content/drive/My Drive/{self.google_drive_folder_id}/{self.execution_name}'
-    #     os.makedirs(drive_path, exist_ok=True)
-
-    #     full_path = os.path.join(drive_path, filename)
-
-    #     if isinstance(data, str):  # It's a file path (model or DataFrame)
-    #         !cp '{data}' '{full_path}'
-    #     elif isinstance(data, plt.Figure):  # It's a matplotlib Figure
-    #         data.savefig(full_path)
-    #     else:
-    #         print(f"Unsupported data type for saving: {type(data)}")
-
-    #     print(f'Saved to Google Drive: {full_path}')
-    def save_to_google_drive(self, data, filename, drive_type):
+    def save_to_google_drive(self, data, filename):
         from google.colab import drive
         drive.mount('/content/drive')
-        if drive_type == "shared":
+        if self.drive_type == "shared":
             drive_path = f'/content/drive/Shareddrives/{self.google_drive_folder_id}/{self.execution_name}'
         else:
             drive_path = f'/content/drive/My Drive/{self.google_drive_folder_id}/{self.execution_name}'
@@ -468,7 +448,6 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
 
 
 if __name__ == "__main__":
-    print('Guys second changes made')
     parser = ArgumentParser(description="Train our version of Emonet on Fer2013")
 
     set_arguments_for_train(parser)
@@ -495,7 +474,7 @@ if __name__ == "__main__":
 
     # Initialize the Emonet model
     if args.attention == 'Self-Attention':
-        fer_emonet_model = FerEmonetWithAttention(emonet_classes=args.emonet_classes)
+        fer_emonet_model = EmonetWithSelfAttention(emonet_classes=args.emonet_classes)
     elif args.attention == 'Multi-Head-Attention':
         fer_emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
     else:
@@ -515,14 +494,3 @@ if __name__ == "__main__":
         google_drive_folder_id=args.google_drive_folder_id,
         drive_type=args.drive_type
     ).run()
-
-    # # Define the folder path
-    # trained_models_folder = 'trained_models_folder'
-    #
-    # # Check if the folder exists, if not, create it
-    # if not os.path.exists(trained_models_folder):
-    #     os.makedirs(trained_models_folder)
-    #
-    # # Save the model in the specified folder
-    # model_save_path = os.path.join(trained_models_folder, f'emonet_{args.emonet_classes}_trained_{current_time}.pth')
-    # torch.save(fer_emonet_model.state_dict(), model_save_path)
