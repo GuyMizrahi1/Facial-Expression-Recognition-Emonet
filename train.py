@@ -1,5 +1,6 @@
 import os
 import torch
+import shutil
 import pandas as pd
 from tqdm import tqdm  # progress bar
 from typing import Tuple
@@ -24,7 +25,7 @@ from sklearn.preprocessing import label_binarize
 
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
-                 output_dir, max_epochs, early_stopping_patience, min_delta):
+                 output_dir, max_epochs, early_stopping_patience, min_delta, google_drive_folder_id, drive_type):
         # for saving model
         self.best_model_state = None
         self.model = model
@@ -37,6 +38,8 @@ class Trainer:
         self.max_epochs = max_epochs
         self.early_stopping_patience = early_stopping_patience
         self.min_delta = min_delta
+        self.google_drive_folder_id = google_drive_folder_id
+        self.drive_type = drive_type
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)  # Initialize the optimizer (Adam and not SGD)
         self.scheduler = LearningRateScheduler(self.optimizer, t_0=10, t_mult=1, eta_min=0, last_epoch=-1,
                                                initial_lr=self.lr)  # Initialize the LR scheduler
@@ -57,12 +60,12 @@ class Trainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
-    def plot_progress(self):
+    def plot_accuracy_and_loss(self):
         # Ensure the output directory exists
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
-        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_training_progress.png')
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_accuracy_and_loss.png')
         plt.figure(figsize=(20, 10))
 
         # Plot training and validation loss
@@ -87,6 +90,8 @@ class Trainer:
         plt.savefig(plot_path)  # Save the plot to a file
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        if self.google_drive_folder_id is not None:
+            self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_accuracy_and_loss.png')
 
     def plot_confusion_matrix(self):
         # Calculate confusion matrix for the validation set
@@ -112,6 +117,8 @@ class Trainer:
         plt.savefig(plot_path)  # Save the plot to a file
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        if self.google_drive_folder_id is not None:
+            self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_confusion_matrix.png')
 
     def plot_precision_recall_curve(self):
         all_labels = []
@@ -139,6 +146,8 @@ class Trainer:
         plt.savefig(plot_path)  # Save the plot to a file
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        if self.google_drive_folder_id is not None:
+            self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_precision_recall_curve.png')
 
     def check_early_stopping(self, validation_loss):
         # Check if early stopping criteria are met
@@ -305,11 +314,55 @@ class Trainer:
         # Save the DataFrame as a CSV file locally
         results_df.to_csv(csv_file_path, index=False)
         print(f'Results saved to {csv_file_path}')
+        # Save to Google Drive if a folder ID is provided
+        if self.google_drive_folder_id:
+            self.save_to_google_drive(local_model_path, f'{self.execution_name}_trained.pth')
+            self.save_to_google_drive(csv_file_path, f'{self.execution_name}_training_results.csv')
+
+
+    # def save_to_google_drive(self, data, filename):
+    #     from google.colab import drive
+    #     drive.mount('/content/drive')
+    #     if self.drive_type == "shared":
+    #         drive_path = f'/content/drive/Shareddrives/{self.google_drive_folder_id}/{self.execution_name}'
+    #     else:  # Default to "my_drive"
+    #         drive_path = f'/content/drive/My Drive/{self.google_drive_folder_id}/{self.execution_name}'
+    #     os.makedirs(drive_path, exist_ok=True)
+
+    #     full_path = os.path.join(drive_path, filename)
+
+    #     if isinstance(data, str):  # It's a file path (model or DataFrame)
+    #         !cp '{data}' '{full_path}'
+    #     elif isinstance(data, plt.Figure):  # It's a matplotlib Figure
+    #         data.savefig(full_path)
+    #     else:
+    #         print(f"Unsupported data type for saving: {type(data)}")
+
+    #     print(f'Saved to Google Drive: {full_path}')
+    def save_to_google_drive(self, data, filename, drive_type):
+        from google.colab import drive
+        drive.mount('/content/drive')
+        if drive_type == "shared":
+            drive_path = f'/content/drive/Shareddrives/{self.google_drive_folder_id}/{self.execution_name}'
+        else:
+            drive_path = f'/content/drive/My Drive/{self.google_drive_folder_id}/{self.execution_name}'
+        os.makedirs(drive_path, exist_ok=True)
+
+        full_path = os.path.join(drive_path, filename)
+
+        if isinstance(data, str):  # It's a file path (model or DataFrame)
+            shutil.copyfile(data, full_path)  # Use shutil.copyfile() to copy
+        elif isinstance(data, plt.Figure):  # It's a matplotlib Figure
+            data.savefig(full_path)
+        else:
+            print(f"Unsupported data type for saving: {type(data)}")
+
+        print(f'Saved to Google Drive: {full_path}')
 
     def run(self):
         # Run the training, validation, testing, and save the model
         self.train()
-        self.plot_progress()
+        self.plot_accuracy_and_loss()
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
         self.test()
@@ -406,9 +459,16 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
                                  '/ Multi-Head-Attention.')
     arg_parser.add_argument('--final_layer_type', type=int, default=1, choices=[1, 2, 3],
                             help='Type of the final layers in the model.')
+    arg_parser.add_argument("--google_drive_folder_id", type=str,
+                            default='1frfusXOtmmxYaBml56lpZ2Lp90npFawH',  # Set to Project's Drive folder
+                            help="ID of the Google Drive folder to save to (optional)")
+    parser.add_argument("--drive_type", type=str, default="shared",
+                        choices=["my_drive", "shared"],
+                        help="Type of Google Drive access: 'my_drive' or 'shared'")
 
 
 if __name__ == "__main__":
+    print('Guys second changes made')
     parser = ArgumentParser(description="Train our version of Emonet on Fer2013")
 
     set_arguments_for_train(parser)
@@ -451,7 +511,9 @@ if __name__ == "__main__":
         output_dir=args.output_dir,
         max_epochs=args.epochs,
         early_stopping_patience=args.early_stopping_patience,
-        min_delta=args.min_delta
+        min_delta=args.min_delta,
+        google_drive_folder_id=args.google_drive_folder_id,
+        drive_type=args.drive_type
     ).run()
 
     # # Define the folder path
