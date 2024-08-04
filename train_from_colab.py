@@ -1,5 +1,14 @@
+# Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Install necessary libraries
+!pip install torch pandas matplotlib seaborn
+
+
 import os
 import torch
+import shutil
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -8,7 +17,6 @@ from typing import Tuple
 from torch import nn, optim
 from datetime import datetime
 import matplotlib.pyplot as plt
-from argparse import ArgumentParser
 from IPython.display import display, Image
 from torchvision import datasets, transforms
 from emonet.models.fer_emonet import FerEmonet
@@ -20,6 +28,7 @@ from torch.utils.data import DataLoader, ConcatDataset
 from emonet.models.emonet_self_attention import EmonetWithSelfAttention
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
+
 
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
@@ -81,10 +90,10 @@ class Trainer:
         plt.ylabel('Accuracy')
         plt.title('Training and Validation Accuracy')
         plt.legend()
-
         plt.tight_layout()
         plt.savefig(plot_path)  # Save the plot to a file
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_accuracy_and_loss.png')
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
 
     def plot_confusion_matrix(self):
@@ -110,6 +119,7 @@ class Trainer:
         plt.tight_layout()
         plt.savefig(plot_path)  # Save the plot to a file
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_confusion_matrix.png')
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
 
     def plot_precision_recall_curve(self):
@@ -137,6 +147,7 @@ class Trainer:
         plt.tight_layout()
         plt.savefig(plot_path)  # Save the plot to a file
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_precision_recall_curve.png')
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
 
     def check_early_stopping(self, validation_loss):
@@ -304,7 +315,25 @@ class Trainer:
         # Save the DataFrame as a CSV file locally
         results_df.to_csv(csv_file_path, index=False)
         print(f'Results saved to {csv_file_path}')
+        # Save to Google Drive if a folder ID is provided
+        self.save_to_google_drive(local_model_path, f'{self.execution_name}_trained.pth')
+        self.save_to_google_drive(csv_file_path, f'{self.execution_name}_training_results.csv')
 
+    def save_to_google_drive(self, data, filename):
+
+        drive_path = f'/content/drive/My Drive/Facial-Expression-Recognition-Emonet/{self.execution_name}'
+        os.makedirs(drive_path, exist_ok=True)
+
+        full_path = os.path.join(drive_path, filename)
+
+        if isinstance(data, str):  # It's a file path (model or DataFrame)
+            shutil.copyfile(data, full_path)  # Use shutil.copyfile() to copy
+        elif isinstance(data, plt.Figure):  # It's a matplotlib Figure
+            data.savefig(full_path)
+        else:
+            print(f"Unsupported data type for saving: {type(data)}")
+
+        print(f'Saved to Google Drive: {full_path}')
 
     def run(self):
         # Run the training, validation, testing, and save the model
@@ -381,65 +410,35 @@ def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
     return train_dataset, val_dataset, test_dataset
 
 
-# Set up command-line arguments for the training script
-def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
-    # Define all arguments for the Emonet training script
-    arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
-    arg_parser.add_argument("--dataset-path-mma", type=str,
-                            default="../Facial-Expression-Recognition-Emonet/mma/MMAFEDB",
-                            help="Path to the dataset mma")
-    arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder",
-                            help="Path where the best model will be saved")
-    arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
-    arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
-    arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
-    arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
-    arg_parser.add_argument("--min_delta", type=float, default=0.001, help="Min delta of validation loss for ES")
-    arg_parser.add_argument("--num-workers", type=int, default=1,
-                            help="The number of subprocesses to use for data loading."
-                                 "0 means that the data will be loaded in the main process.")
-    arg_parser.add_argument('--emonet_classes', type=int, default=5, choices=[5, 8],
-                            help='Number of emotional classes to test the model on. Please use 5 or 8.')
-    arg_parser.add_argument('--attention', type=str, default='Default',
-                            choices=['Default', 'Self-Attention', 'Multi-Head-Attention'],
-                            help='Set the emonet model by its attention mechanism. Please use Default / Self-Attention '
-                                 '/ Multi-Head-Attention.')
-    arg_parser.add_argument('--final_layer_type', type=int, default=1, choices=[1, 2, 3],
-                            help='Type of the final layers in the model.')
-
-
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Train our version of Emonet on Fer2013")
-
-    set_arguments_for_train(parser)
-
-    args = parser.parse_args()
-    print(args)
-
+    args = {'emonet_classes': 5, 'final_layer_type': 1, 'attention': 'Default', 'epochs': 30,
+            'num_workers': 1, 'lr': 1e-3, 'output_dir': 'trained_models_folder',
+            'early_stopping_patience': 5, 'min_delta': 0.001, 'fer_dataset_path': '/content/fer2013',
+            'mma_dataset_path':'/content/Facial-Expression-Recognition-Emonet/mma/MMAFEDB', 'batch_size': 32}
     # Generate a unique identifier for this training session or model save file
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    exec_name = f"Emonet_{args.emonet_classes}_{current_time}"
+    exec_name = f"Emonet_{args['emonet_classes']}_{current_time}"
 
     # Load and transform datasets, then create DataLoaders for training, validation, and testing
-    train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args.dataset_path)
-    train_dataset_mma, val_dataset_mma, test_dataset_mma = load_and_transform_datasets_mma(args.dataset_path_mma)
+    train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args['fer_dataset_path'])
+    train_dataset_mma, val_dataset_mma, test_dataset_mma = load_and_transform_datasets_mma(args['mma_dataset_path'])
 
     combined_dataset_train = ConcatDataset([train_dataset, train_dataset_mma])
     combined_dataset_val = ConcatDataset([val_dataset, val_dataset_mma])
     combined_dataset_test = ConcatDataset([test_dataset, test_dataset_mma])
 
-    train_loader = DataLoader(combined_dataset_train, batch_size=args.batch_size, shuffle=True,
-                              num_workers=args.num_workers)
+    train_loader = DataLoader(combined_dataset_train, batch_size=args['batch_size'], shuffle=True,
+                              num_workers=args['num_workers'])
     val_loader = DataLoader(combined_dataset_val, batch_size=32, shuffle=False)
     test_loader = DataLoader(combined_dataset_test, batch_size=32, shuffle=False)
 
     # Initialize the Emonet model
-    if args.attention == 'Self-Attention':
-        fer_emonet_model = EmonetWithSelfAttention(emonet_classes=args.emonet_classes)
-    elif args.attention == 'Multi-Head-Attention':
-        fer_emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
+    if args['attention'] == 'Self-Attention':
+        fer_emonet_model = EmonetWithSelfAttention(emonet_classes=args['emonet_classes'])
+    elif args['attention'] == 'Multi-Head-Attention':
+        fer_emonet_model = FerMultihead(emonet_classes=args['emonet_classes'])
     else:
-        fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes, final_layer_type=args.final_layer_type)
+        fer_emonet_model = FerEmonet(emonet_classes=args['emonet_classes'], final_layer_type=args['final_layer_type'])
 
     Trainer(
         model=fer_emonet_model,
@@ -447,9 +446,9 @@ if __name__ == "__main__":
         validation_dataloader=val_loader,
         testing_dataloader=test_loader,
         execution_name=exec_name,
-        lr=args.lr,
-        output_dir=args.output_dir,
-        max_epochs=args.epochs,
-        early_stopping_patience=args.early_stopping_patience,
-        min_delta=args.min_delta,
+        lr=args['lr'],
+        output_dir=args['output_dir'],
+        max_epochs=args['epochs'],
+        early_stopping_patience=args['early_stopping_patience'],
+        min_delta=args['min_delta'],
     ).run()
