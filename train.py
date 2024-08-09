@@ -1,5 +1,15 @@
+# Needs to be run in Google Colab
+######################################################
+# # Mount Google Drive                              ##
+# from google.colab import drive                    ##
+# drive.mount('/content/drive')                     ##
+#                                                   ##
+# # Install necessary libraries                     ##
+# !pip install torch pandas matplotlib seaborn      ##
+######################################################
 import os
 import torch
+import shutil
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -20,6 +30,7 @@ from torch.utils.data import DataLoader, ConcatDataset
 from emonet.models.emonet_self_attention import EmonetWithSelfAttention
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
+
 
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
@@ -45,12 +56,22 @@ class Trainer:
         self.early_stop = False  # Flag for early stopping
         self.train_losses = []
         self.train_accuracies = []
+        self.train_precisions = []
+        self.train_recalls = []
+        self.train_f1s = []
         self.val_losses = []
         self.val_accuracies = []
-        self.precision_list = []
-        self.recall_list = []
-        self.f1_list = []
-        self.confusion_matrices = []
+        self.val_precisions = []
+        self.val_recalls = []
+        self.val_f1s = []
+        self.val_confusion_matrices = []
+        self.lr_lst = []
+        self.test_loss = 0
+        self.test_accuracy = 0
+        self.test_precision = 0
+        self.test_recall = 0
+        self.test_f1 = 0
+        self.test_conf_matrix = None
 
         # Move the model to the appropriate device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -62,10 +83,10 @@ class Trainer:
             os.makedirs(self.output_dir)
 
         plot_path = os.path.join(self.output_dir, f'{self.execution_name}_accuracy_and_loss.png')
-        plt.figure(figsize=(20, 10))
+        plt.figure(figsize=(30, 10))
 
         # Plot training and validation loss
-        plt.subplot(1, 2, 1)
+        plt.subplot(1, 3, 1)
         plt.plot(self.train_losses, label='Training Loss')
         plt.plot(self.val_losses, label='Validation Loss')
         plt.xlabel('Epoch')
@@ -74,7 +95,7 @@ class Trainer:
         plt.legend()
 
         # Plot training and validation accuracy
-        plt.subplot(1, 2, 2)
+        plt.subplot(1, 3, 2)
         plt.plot(self.train_accuracies, label='Training Accuracy')
         plt.plot(self.val_accuracies, label='Validation Accuracy')
         plt.xlabel('Epoch')
@@ -82,41 +103,39 @@ class Trainer:
         plt.title('Training and Validation Accuracy')
         plt.legend()
 
+        # Plot training and validation F1 Score
+        plt.subplot(1, 3, 3)
+        plt.plot(self.train_f1s, label='Training F1 Score')
+        plt.plot(self.val_f1s, label='Validation F1 Score')
+        plt.xlabel('Epoch')
+        plt.ylabel('F1 Score')
+        plt.title('Training and Validation F1 Score')
+        plt.legend()
+
         plt.tight_layout()
         plt.savefig(plot_path)  # Save the plot to a file
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_accuracy_loss_f1.png')
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
 
     def plot_confusion_matrix(self):
-        # Calculate confusion matrix for the validation set
-        all_labels = []
-        all_preds = []
-        with torch.no_grad():
-            for batch in self.validation_dataloader:
-                inputs, labels = batch
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                outputs = self.model(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-                all_labels.extend(labels.cpu().numpy())
-                all_preds.extend(predicted.cpu().numpy())
-        conf_matrix = confusion_matrix(all_labels, all_preds)
-
-        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_confusion_matrix.png')
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_test_confusion_matrix.png')
         plt.figure(figsize=(10, 8))
-        sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
+        sns.heatmap(self.test_conf_matrix, annot=True, fmt='d', cmap='Blues')
         plt.xlabel('Predicted')
         plt.ylabel('Actual')
         plt.title('Confusion Matrix')
         plt.tight_layout()
         plt.savefig(plot_path)  # Save the plot to a file
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_test_confusion_matrix.png')
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
 
     def plot_precision_recall_curve(self):
         all_labels = []
         all_probs = []
         with torch.no_grad():
-            for batch in self.validation_dataloader:
+            for batch in self.testing_dataloader:
                 inputs, labels = batch
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
                 outputs = self.model(inputs)
@@ -125,7 +144,7 @@ class Trainer:
                 all_probs.extend(probs)
         all_labels = label_binarize(all_labels, classes=[0, 1, 2, 3, 4, 5, 6])  # Adjust based on number of classes
 
-        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_precision_recall_curve.png')
+        plot_path = os.path.join(self.output_dir, f'{self.execution_name}_test_precision_recall_curve.png')
         plt.figure(figsize=(10, 8))
         for i in range(all_labels.shape[1]):
             precision, recall, _ = precision_recall_curve(all_labels[:, i], np.array(all_probs)[:, i])
@@ -137,6 +156,7 @@ class Trainer:
         plt.tight_layout()
         plt.savefig(plot_path)  # Save the plot to a file
         display(Image(filename=plot_path))  # Display the saved plot image in the notebook
+        self.save_to_google_drive(plt.gcf(), f'{self.execution_name}_test_precision_recall_curve.png')
         plt.close()  # Close the figure to prevent it from being displayed inline in the notebook
 
     def check_early_stopping(self, validation_loss):
@@ -175,24 +195,19 @@ class Trainer:
         precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
         conf_matrix = confusion_matrix(all_labels, all_preds)
 
-        self.precision_list.append(precision)
-        self.recall_list.append(recall)
-        self.f1_list.append(f1)
-        self.confusion_matrices.append(conf_matrix)
-
-        print(f'Validation Loss: {validation_loss}, Accuracy: {accuracy}, Precision: {precision}, '
-              f'Recall: {recall}, F1 Score: {f1}')
-        print(f'Confusion Matrix:\n{conf_matrix}')
-        return validation_loss, accuracy
+        return validation_loss, accuracy, precision, recall, f1, conf_matrix
 
     def train(self):
         # Train the model
         self.model.train()  # Set the model to training mode
         for epoch in range(self.max_epochs):
             print(f'Epoch {epoch + 1}/{self.max_epochs}, Learning Rate: {self.optimizer.param_groups[0]["lr"]}')
+            self.lr_lst.append(self.optimizer.param_groups[0])
             total_loss = 0
             correct_predictions = 0
             total_predictions = 0
+            all_labels = []
+            all_preds = []
             progress_bar = tqdm(self.training_dataloader, desc=f'Epoch {epoch + 1}/{self.max_epochs}', unit="batch")
             for batch in self.training_dataloader:
                 inputs, labels = batch
@@ -215,6 +230,8 @@ class Trainer:
                 _, predicted = torch.max(outputs.data, 1)
                 correct_predictions += (predicted == labels).sum().item()
                 total_predictions += labels.size(0)
+                all_labels.extend(labels.cpu().numpy())
+                all_preds.extend(predicted.cpu().numpy())
                 # Update progress bar with loss value
                 progress_bar.set_postfix({'loss': f'{current_loss:.4f}'})
                 progress_bar.update(1)  # Manually increment the progress bar by one step
@@ -222,18 +239,30 @@ class Trainer:
             progress_bar.close()
 
             train_accuracy = correct_predictions / total_predictions
+            train_precision, train_recall, train_f1, _ = precision_recall_fscore_support(all_labels, all_preds,
+                                                                                         average='weighted')
 
-            validation_loss, validation_accuracy = self.validate()
+            validation_loss, validation_accuracy, val_precision, val_recall, val_f1, val_conf_matrix = self.validate()
             train_loss = total_loss / len(self.training_dataloader)
 
-            print(f'Epoch {epoch + 1}, Train Loss: {train_loss}, Validation Loss: {validation_loss}, '
-                  f'Train Accuracy: {train_accuracy}, Validation Accuracy: {validation_accuracy}')
+            print(f'Epoch {epoch + 1}, Train Log - Loss: {train_loss}, Accuracy: {train_accuracy}, '
+                  f'Precision: {train_precision}, Recall: {train_recall}, F1 Score: {train_f1}')
+            print(f'Epoch {epoch + 1}, Validation Log - Loss: {validation_loss}, Accuracy: {validation_accuracy}, '
+                  f'Precision: {val_precision}, Recall: {val_recall}, F1 Score: {val_f1}')
+            print(f'Epoch {epoch + 1}, Confusion Matrix:\n{val_conf_matrix}')
 
             # Append metrics to their respective lists
             self.train_losses.append(train_loss)
-            self.val_losses.append(validation_loss)
             self.train_accuracies.append(train_accuracy)
+            self.train_precisions.append(train_precision)
+            self.train_recalls.append(train_recall)
+            self.train_f1s.append(train_f1)
+            self.val_losses.append(validation_loss)
             self.val_accuracies.append(validation_accuracy)
+            self.val_precisions.append(val_precision)
+            self.val_recalls.append(val_recall)
+            self.val_f1s.append(val_f1)
+            self.val_confusion_matrices.append(val_conf_matrix)
 
             # Update Learning Rate
             # self.scheduler.step(epoch)
@@ -267,14 +296,16 @@ class Trainer:
                 all_labels.extend(labels.cpu().numpy())
                 all_preds.extend(predicted.cpu().numpy())
 
-        test_loss = total_loss / len(self.testing_dataloader)
-        accuracy = correct / len(self.testing_dataloader.dataset)
-        precision, recall, f1, _ = precision_recall_fscore_support(all_labels, all_preds, average='weighted')
-        conf_matrix = confusion_matrix(all_labels, all_preds)
+        self.test_loss = total_loss / len(self.testing_dataloader)
+        self.test_accuracy = correct / len(self.testing_dataloader.dataset)
+        self.test_precision, self.test_recall, self.test_f1, _ = precision_recall_fscore_support(
+            all_labels, all_preds, average='weighted')
+        self.test_conf_matrix = confusion_matrix(all_labels, all_preds)
+        self.val_confusion_matrices.append(self.test_conf_matrix)
 
-        print(f'Test Loss: {test_loss}, Accuracy: {accuracy}, Precision: {precision}, '
-              f'Recall: {recall}, F1 Score: {f1}')
-        print(f'Confusion Matrix:\n{conf_matrix}')
+        print(f'Test Loss: {self.test_loss}, Accuracy: {self.test_accuracy}, Precision: {self.test_precision}, '
+              f'Recall: {self.test_recall}, F1 Score: {self.test_f1}')
+        print(f'Confusion Matrix:\n{self.test_conf_matrix}')
 
     def save_model_and_results(self):
         # Ensure the output directory exists
@@ -289,30 +320,77 @@ class Trainer:
         # Create a DataFrame with the training and validation metrics
         results_df = pd.DataFrame({
             'Epoch': list(range(1, len(self.train_losses) + 1)),
+            'Learning Rate': self.lr_lst,
             'Train Loss': self.train_losses,
             'Validation Loss': self.val_losses,
             'Train Accuracy': self.train_accuracies,
-            'Validation Accuracy': self.val_accuracies
+            'Validation Accuracy': self.val_accuracies,
+            'Train Precision': self.train_precisions,
+            'Validation Precision': self.val_precisions,
+            'Train Recall': self.train_recalls,
+            'Validation Recall': self.val_recalls,
+            'Train F1 Score': self.train_f1s,
+            'Validation F1 Score': self.val_f1s
         })
+
+        # Add test metrics to the DataFrame
+        test_metrics = {
+            'Test Loss': [self.test_loss],
+            'Test Accuracy': [self.test_accuracy],
+            'Test Precision': [self.test_precision],
+            'Test Recall': [self.test_recall],
+            'Test F1 Score': [self.test_f1]
+        }
+
+        test_df = pd.DataFrame(test_metrics)
+        results_df = pd.concat([results_df, test_df], axis=1)
 
         # Print the DataFrame
         print(results_df)
 
         # Define the local path to save the CSV file
-        csv_file_path = os.path.join(self.output_dir, f'{self.execution_name}_training_results.csv')
+        csv_file_path = os.path.join(self.output_dir, f'{self.execution_name}_all_scores_results.csv')
 
         # Save the DataFrame as a CSV file locally
         results_df.to_csv(csv_file_path, index=False)
         print(f'Results saved to {csv_file_path}')
 
+        # Save to Google Drive if a folder ID is provided
+        self.save_to_google_drive(local_model_path, f'{self.execution_name}_trained.pth')
+        self.save_to_google_drive(csv_file_path, f'{self.execution_name}_all_scores_results.csv')
+
+        # Save confusion matrices to a separate CSV file
+        conf_matrix_path = os.path.join(self.output_dir, f'{self.execution_name}_confusion_matrices.csv')
+        with open(conf_matrix_path, 'w') as f:
+            for epoch, conf_matrix in enumerate(self.val_confusion_matrices, 1):
+                if epoch == len(self.val_confusion_matrices):
+                    f.write('Test\n')
+                else:
+                    f.write(f'Epoch {epoch}\n')
+                np.savetxt(f, conf_matrix, fmt='%d', delimiter=',')
+                f.write('\n')
+        print(f'Confusion matrices saved to {conf_matrix_path}')
+        self.save_to_google_drive(conf_matrix_path, f'{self.execution_name}_confusion_matrices.csv')
+
+    def save_to_google_drive(self, data, filename):
+        drive_path = f'/content/drive/My Drive/Facial-Expression-Recognition-Emonet/{self.execution_name}'
+        os.makedirs(drive_path, exist_ok=True)
+        full_path = os.path.join(drive_path, filename)
+        if isinstance(data, str):  # It's a file path (model or DataFrame)
+            shutil.copyfile(data, full_path)  # Use shutil.copyfile() to copy
+        elif isinstance(data, plt.Figure):  # It's a matplotlib Figure
+            data.savefig(full_path)
+        else:
+            print(f"Unsupported data type for saving: {type(data)}")
+        print(f'Saved to Google Drive: {full_path}')
 
     def run(self):
         # Run the training, validation, testing, and save the model
         self.train()
+        self.test()
         self.plot_accuracy_and_loss()
         self.plot_confusion_matrix()
         self.plot_precision_recall_curve()
-        self.test()
         self.save_model_and_results()
 
 
