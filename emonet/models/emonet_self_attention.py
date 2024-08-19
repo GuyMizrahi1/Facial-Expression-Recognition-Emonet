@@ -110,6 +110,7 @@ class SelfAttention(nn.Module):
     Implements a dot-product self-attention mechanism.
     """
 
+
     def __init__(self, input_dim):
         """
         Initializes the self-attention module.
