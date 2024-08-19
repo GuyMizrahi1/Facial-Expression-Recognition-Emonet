@@ -86,7 +86,7 @@ class FerEmonet(nn.Module):
             x = self.mean_pool(x)
             x = x.view(x.size(0), -1)  # (batch size, 128, 1, 1) -> (batch size, 128)
         elif self.final_layer_type == 2:
-            x = self.conv1X1(emonet_features)
+            x = self.conv1x1(emonet_features)
             x = self.batch_norm(x)
             x = F.relu(x)
             x = self.flatten(x)

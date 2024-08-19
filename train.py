@@ -13,7 +13,7 @@ from torchvision import datasets, transforms
 from emonet.models.fer_emonet import FerEmonet
 from torchvision.transforms import functional as F
 from emonet.models.fer_multihead import FerMultihead
-from emonet.models.fer_emonet_with_attention import FerEmonetWithAttention
+from emonet.models.emonet_self_attention import EmonetWithSelfAttention
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 import seaborn as sns
@@ -390,7 +390,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
                             help="Path to the dataset mma")
     arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder",
                             help="Path where the best model will be saved")
-    arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
+    arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
     arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
@@ -398,7 +398,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     arg_parser.add_argument("--num-workers", type=int, default=1,
                             help="The number of subprocesses to use for data loading."
                                  "0 means that the data will be loaded in the main process.")
-    arg_parser.add_argument('--emonet_classes', type=int, default=5, choices=[5, 8],
+    arg_parser.add_argument('--emonet_classes', type=int, default=8, choices=[5, 8],
                             help='Number of emotional classes to test the model on. Please use 5 or 8.')
     arg_parser.add_argument('--attention', type=str, default='Default',
                             choices=['Default', 'Self-Attention', 'Multi-Head-Attention'],
@@ -435,14 +435,14 @@ if __name__ == "__main__":
 
     # Initialize the Emonet model
     if args.attention == 'Self-Attention':
-        fer_emonet_model = FerEmonetWithAttention(emonet_classes=args.emonet_classes)
+        emonet_model = EmonetWithSelfAttention(emonet_classes=args.emonet_classes)
     elif args.attention == 'Multi-Head-Attention':
-        fer_emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
+        emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
     else:
-        fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes, final_layer_type=args.final_layer_type)
+        emonet_model = FerEmonet(emonet_classes=args.emonet_classes, final_layer_type=args.final_layer_type)
 
     Trainer(
-        model=fer_emonet_model,
+        model=emonet_model,
         training_dataloader=train_loader,
         validation_dataloader=val_loader,
         testing_dataloader=test_loader,
@@ -453,14 +453,3 @@ if __name__ == "__main__":
         early_stopping_patience=args.early_stopping_patience,
         min_delta=args.min_delta
     ).run()
-
-    # # Define the folder path
-    # trained_models_folder = 'trained_models_folder'
-    #
-    # # Check if the folder exists, if not, create it
-    # if not os.path.exists(trained_models_folder):
-    #     os.makedirs(trained_models_folder)
-    #
-    # # Save the model in the specified folder
-    # model_save_path = os.path.join(trained_models_folder, f'emonet_{args.emonet_classes}_trained_{current_time}.pth')
-    # torch.save(fer_emonet_model.state_dict(), model_save_path)
