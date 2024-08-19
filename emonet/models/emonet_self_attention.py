@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F  # Import for using functions like softmax
+import torch.nn.functional as F
 from emonet.models.emonet import EmoNet
 
 
@@ -10,7 +10,7 @@ class EmonetWithSelfAttention(nn.Module):
     as a feature extractor and incorporates a self-attention mechanism.
     """
 
-    def __init__(self, emonet_classes=5, emonet_grad=False):
+    def __init__(self, emonet_classes=8, emonet_grad=False):
         """
         Initializes the model.
 
@@ -110,14 +110,15 @@ class SelfAttention(nn.Module):
     Implements a dot-product self-attention mechanism.
     """
 
-    def _init_(self, input_dim):
+
+    def __init__(self, input_dim):
         """
         Initializes the self-attention module.
 
         Args:
             input_dim (int): The number of channels in the input features.
         """
-        super(SelfAttention, self)._init_()  # Initialize the parent nn.Module class
+        super(SelfAttention, self).__init__()  # Initialize the parent nn.Module class
 
         # Create convolutional layers to project the input into query, key, and value matrices
         self.query_layer = nn.Conv2d(input_dim, input_dim // 8, kernel_size=1)  # Reduce dimensionality for queries
@@ -138,8 +139,8 @@ class SelfAttention(nn.Module):
         batch_size, channels, height, width = x.size()  # Get the input dimensions
 
         # Project the input into query, key, and value matrices
-        queries = self.query_layer(x).view(batch_size, -1, height * width).permute(0, 2,
-                                                                                   1)  # Reshape and transpose for queries
+        # Reshape and transpose for queries
+        queries = self.query_layer(x).view(batch_size, -1, height * width).permute(0, 2, 1)
         keys = self.key_layer(x).view(batch_size, -1, height * width)  # Reshape for keys
         values = self.value_layer(x).view(batch_size, -1, height * width)  # Reshape for values
 

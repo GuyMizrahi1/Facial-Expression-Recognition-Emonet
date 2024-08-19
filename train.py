@@ -468,7 +468,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
                             help="Path to the dataset mma")
     arg_parser.add_argument("--output-dir", type=str, default="trained_models_folder",
                             help="Path where the best model will be saved")
-    arg_parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
+    arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
     arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
@@ -476,7 +476,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     arg_parser.add_argument("--num-workers", type=int, default=1,
                             help="The number of subprocesses to use for data loading."
                                  "0 means that the data will be loaded in the main process.")
-    arg_parser.add_argument('--emonet_classes', type=int, default=5, choices=[5, 8],
+    arg_parser.add_argument('--emonet_classes', type=int, default=8, choices=[5, 8],
                             help='Number of emotional classes to test the model on. Please use 5 or 8.')
     arg_parser.add_argument('--attention', type=str, default='Default',
                             choices=['Default', 'Self-Attention', 'Multi-Head-Attention'],
@@ -496,7 +496,7 @@ if __name__ == "__main__":
 
     # Generate a unique identifier for this training session or model save file
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    exec_name = f"Emonet_{args.emonet_classes}_{current_time}"
+    exec_name = f"Emonet_{args.emonet_classes}_{args.attention}_{args.final_layer_type}_{current_time}"
 
     # Load and transform datasets, then create DataLoaders for training, validation, and testing
     train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args.dataset_path)
@@ -513,14 +513,14 @@ if __name__ == "__main__":
 
     # Initialize the Emonet model
     if args.attention == 'Self-Attention':
-        fer_emonet_model = EmonetWithSelfAttention(emonet_classes=args.emonet_classes)
+        emonet_model = EmonetWithSelfAttention(emonet_classes=args.emonet_classes)
     elif args.attention == 'Multi-Head-Attention':
-        fer_emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
+        emonet_model = FerMultihead(emonet_classes=args.emonet_classes)
     else:
-        fer_emonet_model = FerEmonet(emonet_classes=args.emonet_classes, final_layer_type=args.final_layer_type)
+        emonet_model = FerEmonet(emonet_classes=args.emonet_classes, final_layer_type=args.final_layer_type)
 
     Trainer(
-        model=fer_emonet_model,
+        model=emonet_model,
         training_dataloader=train_loader,
         validation_dataloader=val_loader,
         testing_dataloader=test_loader,
