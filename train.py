@@ -28,7 +28,6 @@ from torchvision.transforms import functional as F
 from emonet.models.fer_multihead import FerMultihead
 from torch.utils.data import DataLoader, ConcatDataset
 from emonet.models.emonet_self_attention import EmonetWithSelfAttention
-from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
 from sklearn.metrics import precision_recall_fscore_support, confusion_matrix
 from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
 
@@ -497,7 +496,7 @@ if __name__ == "__main__":
 
     # Generate a unique identifier for this training session or model save file
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    exec_name = f"Emonet_{args.emonet_classes}_{current_time}"
+    exec_name = f"Emonet_{args.emonet_classes}_{args.attention}_{args.final_layer_type}_{current_time}"
 
     # Load and transform datasets, then create DataLoaders for training, validation, and testing
     train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args.dataset_path)
