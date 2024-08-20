@@ -34,7 +34,7 @@ from scheduler import CosineAnnealingWithWarmRestartsLR as LearningRateScheduler
 
 class Trainer:
     def __init__(self, model, training_dataloader, validation_dataloader, testing_dataloader, execution_name, lr,
-                 output_dir, max_epochs, early_stopping_patience, min_delta):
+                 use_scheduler, output_dir, max_epochs, early_stopping_patience, min_delta):
         # for saving model
         self.best_model_state = None
         self.model = model
@@ -43,6 +43,7 @@ class Trainer:
         self.testing_dataloader = testing_dataloader
         self.execution_name = execution_name
         self.lr = lr
+        self.use_scheduler = use_scheduler
         self.output_dir = output_dir
         self.max_epochs = max_epochs
         self.early_stopping_patience = early_stopping_patience
@@ -265,7 +266,9 @@ class Trainer:
             self.val_confusion_matrices.append(val_conf_matrix)
 
             # Update Learning Rate
-            # self.scheduler.step(epoch)
+            if self.use_scheduler:
+                self.scheduler.step(epoch)
+
             if validation_loss < self.best_loss:
                 self.best_model_state = self.model.state_dict()
 
@@ -471,6 +474,7 @@ def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     arg_parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     arg_parser.add_argument("--batch-size", type=int, default=32, help="Batch size for training")
     arg_parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
+    arg_parser.add_argument("--use_scheduler", type=bool, default=False, help="Use learning rate scheduler")
     arg_parser.add_argument("--early_stopping_patience", type=int, default=5, help="Early Stopping")
     arg_parser.add_argument("--min_delta", type=float, default=0.001, help="Min delta of validation loss for ES")
     arg_parser.add_argument("--num-workers", type=int, default=1,
@@ -530,4 +534,5 @@ if __name__ == "__main__":
         max_epochs=args.epochs,
         early_stopping_patience=args.early_stopping_patience,
         min_delta=args.min_delta,
+        use_scheduler=args.use_scheduler
     ).run()
