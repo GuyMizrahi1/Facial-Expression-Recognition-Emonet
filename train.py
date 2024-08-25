@@ -419,6 +419,25 @@ def dataset_transform() -> transforms.Compose:
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
     ])
 
+def dataset_transform_hori() -> transforms.Compose:
+    return transforms.Compose([
+        transforms.Resize(256),  # Resize to 256x256
+        transforms.ToTensor(),  # Convert to tensor
+        transforms.Lambda(lambda img: F.hflip(img)),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),  # Random color jitter
+        GrayscaleToRGB(),  # Convert grayscale images to RGB
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
+    ])
+
+def dataset_transform_vert() -> transforms.Compose:
+    return transforms.Compose([
+        transforms.Resize(256),  # Resize to 256x256
+        transforms.ToTensor(),  # Convert to tensor
+        transforms.Lambda(lambda img: F.vflip(img)),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        GrayscaleToRGB(),  # Convert grayscale images to RGB
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Common ImageNet normalization
+    ])
 
 def dataset_transform_mma() -> transforms.Compose:
     # TODO: change RGB
@@ -448,6 +467,15 @@ def load_and_transform_datasets(dataset_path: str) -> Tuple[
 
     return train_dataset, val_dataset, test_dataset
 
+def load_and_transform_datasets_augmentations(dataset_path: str) -> Tuple[
+    datasets.VisionDataset, datasets.VisionDataset, datasets.VisionDataset]:
+    train_dataset_augmented_1 = load_dataset(dataset_path, 'train', dataset_transform_hori())
+    train_dataset_augmented_2 = load_dataset(dataset_path, 'train', dataset_transform_vert())
+
+    print(f'Using {len(train_dataset_augmented_1)} images for training.')
+    print(f'Using {len(train_dataset_augmented_2)} images for training.')
+
+    return train_dataset_augmented_1, train_dataset_augmented_2,
 
 def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
     datasets.VisionDataset, datasets.VisionDataset, datasets.VisionDataset]:
@@ -461,8 +489,17 @@ def load_and_transform_datasets_mma(dataset_path: str) -> Tuple[
 
     return train_dataset, val_dataset, test_dataset
 
+def load_and_transform_datasets_mma_augmentations(dataset_path: str) -> Tuple[
+    datasets.VisionDataset, datasets.VisionDataset, datasets.VisionDataset]:
+    train_dataset_augmented_1 = load_dataset(dataset_path, 'train', dataset_transform_hori())
+    train_dataset_augmented_2 = load_dataset(dataset_path, 'train', dataset_transform_vert())
 
-# Set up command-line arguments for the training script
+    print(f'Using {len(train_dataset_augmented_1)} images for training.')
+    print(f'Using {len(train_dataset_augmented_2)} images for training.')
+
+    return train_dataset_augmented_1, train_dataset_augmented_2
+
+    # Set up command-line arguments for the training script
 def set_arguments_for_train(arg_parser: ArgumentParser) -> None:
     # Define all arguments for the Emonet training script
     arg_parser.add_argument("--dataset-path", type=str, default="../fer2013", help="Path to the dataset")
@@ -505,8 +542,10 @@ if __name__ == "__main__":
     # Load and transform datasets, then create DataLoaders for training, validation, and testing
     train_dataset, val_dataset, test_dataset = load_and_transform_datasets(args.dataset_path)
     train_dataset_mma, val_dataset_mma, test_dataset_mma = load_and_transform_datasets_mma(args.dataset_path_mma)
-
-    combined_dataset_train = ConcatDataset([train_dataset, train_dataset_mma])
+    train_dataset_augment_1, train_dataset_augment_2 = load_and_transform_datasets_augmentations(args.dataset_path)
+    train_dataset_mma_augment_1, train_dataset_mma_augment_2 = load_and_transform_datasets_mma_augmentations(args.dataset_path_mma)
+    combined_dataset_train = ConcatDataset([train_dataset, train_dataset_augment_1,train_dataset_augment_2,
+                                            train_dataset_mma, train_dataset_mma_augment_1, train_dataset_mma_augment_2])
     combined_dataset_val = ConcatDataset([val_dataset, val_dataset_mma])
     combined_dataset_test = ConcatDataset([test_dataset, test_dataset_mma])
 
