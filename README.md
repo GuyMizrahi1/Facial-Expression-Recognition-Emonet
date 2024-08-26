@@ -7,51 +7,41 @@ Please find a full-text, view only, version of the paper [here](https://rdcu.be/
 
 The full article is available on the [Nature Machine Intelligence website](https://www.nature.com/articles/s42256-020-00280-0).
 
-[Demo] Discrete Emotion + Continuous Valence and Arousal levels      |  [Demo] Displaying Facial Landmarks
-:-------------------------------------------------------------------:|:--------------------------------------:
-<img src='images/emotion_only.gif' title='Emotion' style='max-width:600px'></img>  |  <img src='images/emotion_with_landmarks.gif' title='Emotion with landmarks' style='max-width:600px'></img>
-
-
 ## Our Project
-Introduces a novel deep neural network for analyzing facial affect in naturalistic conditions. 
-Integrates face alignment and jointly estimates categorical and continuous emotions in a single pass.
+This report presents our work on extending the capabilities of EmoNet, 
+a deep learning model for facial expression recognition, 
+as described in "Estimation of continuous valence and arousal levels from faces in naturalistic conditions" (Toisoul et al., 2021). 
+We explored novel enhancements by incorporating transfer learning and attention mechanisms. 
+Our experiments aimed to improve the model's ability to capture salient facial features for accurate expression 
+classification using attention mechanisms. 
+A detailed analysis of our methods, results, and insights gained from the project is provided. 
+The code and model implementations are available here in this repository on GitHub, 
+and the outputs, including graphs and matrices, can be accessed on [Google Drive](https://drive.google.com/drive/folders/1frfusXOtmmxYaBml56lpZ2Lp90npFawH). 
+Additionally, the model was executed in a [Google Colab notebook](https://colab.research.google.com/drive/1PU2hOrGYpgbbPH-NdP8kYq3wdbBlElgQ?authuser=0#scrollTo=drgbUr8HCGaw) 
+, which is available for review.
 
-In our project we used the emonet while using a transfer learning technique to train the model on our dataset. The dataset was different from the data that the original model was trained on. The dataset was a collection of images of people with different facial expressions - FER2013 [Link](https://paperswithcode.com/dataset/fer2013).
+### Enhancements and Methods
+1. **Dataset and Preprocessing**: We used the FER2013 and MMAFEDB datasets, converting grayscale images to RGB and resizing all images to 256x256 pixels.
+2. **Data Augmentation**: Applied random horizontal and vertical flips, and adjustments to color properties to increase dataset diversity.
+3. **Model Architecture**:
+   - **Baseline Model**: Transfer learning with a new classification head.
+   - **EmoNet with Self-Attention**: Incorporated a dot-product self-attention mechanism.
+   - **EmoNet with Multi-Head Attention**: Used a 16x16 patch size with 4 attention heads.
+4. **Training and Evaluation**: Trained using the Adam optimizer, evaluated with metrics like accuracy, precision, recall, F1-score, and confusion matrices.
+5. **Learning Rate Scheduler**: Implemented Cosine Annealing with Warm Restarts.
+6. **Grad-CAM**: Integrated Grad-CAM for visualizing model decision-making.
 
-The dataset was labeled for 7 emotions which is different from the pretrained models, so we had to modify the model to output 7 classes instead of 8 or 5, and focus on the categorical emotions only.
+### Results
+- **Best Model**: The baseline model with 'Final Layer 1' achieved the highest F1 score of 52%.
+- **Attention Mechanisms**: Did not improve performance due to small dataset size and data imbalance.
+- **Grad-CAM**: Implementation was unsuccessful due to model complexity.
 
-Therefore, we created a train.py file that trains the model on the smaller dataset which had to be augmented.. 
+### Individual Contributions
+- **Guy Mizrahi**: Implemented the train.py script, incorporated the FER2013 dataset, implemented the cosine annealing learning rate scheduler, and the dot-product self-attention mechanism.
+- **Ran Weissman**: Managed the integration of the MMAFEDB dataset, implemented data augmentation techniques, and executed experiments with the EmoNet model.
+- **Dolev Shaked**: Implemented the transfer learning baseline model in FerEmonet.py, multi-head attention in fer_multihead.py, and executed experiments.
+- **Alon Rosenbaum**: Integrated Grad-CAM into the FerEmonet model, addressed dimension mismatches, and validated the implementation with a simpler model.
 
-### WIP (need to add more details about the project)
-
-and saves the model to be used later for testing.
-
-#### Class number to expression name
-
-The mapping from class number to expression is as follows.
-
-```
-For 8 emotions :
-
-0 - Neutral
-1 - Happy
-2 - Sad
-3 - Surprise
-4 - Fear
-5 - Disgust
-6 - Anger
-7 - Contempt
-```
-
-```
-For 5 emotions :
-
-0 - Neutral
-1 - Happy
-2 - Sad
-3 - Surprise
-4 - Fear
-```
 
 ## Citation
 
@@ -72,3 +62,8 @@ If you use this code, please cite:
 ## License
 
 Code available under a Creative Commons Attribution-Non Commercial-No Derivatives 4.0 International Licence (CC BY-NC-ND) license.
+
+
+[Demo] Discrete Emotion + Continuous Valence and Arousal levels      |  [Demo] Displaying Facial Landmarks
+:-------------------------------------------------------------------:|:--------------------------------------:
+<img src='images/emotion_only.gif' title='Emotion' style='max-width:600px'></img>  |  <img src='images/emotion_with_landmarks.gif' title='Emotion with landmarks' style='max-width:600px'></img>
